@@ -1,4 +1,4 @@
-const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2022/01/input.txt");
+const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/01/input.txt");
 
 fn p1(input: &str) -> String {
     let _input = input.trim();
