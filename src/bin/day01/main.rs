@@ -15,8 +15,54 @@ fn p1(input: &str) -> String {
 }
 
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    fn match_digit(line: &str, start_idx: usize) -> Option<u32> {
+        const DIGITS_MAP: [(&str, u32); 19] = [
+            ("0", 0),
+            ("1", 1),
+            ("2", 2),
+            ("3", 3),
+            ("4", 4),
+            ("5", 5),
+            ("6", 6),
+            ("7", 7),
+            ("8", 8),
+            ("9", 9),
+            ("one", 1),
+            ("two", 2),
+            ("three", 3),
+            ("four", 4),
+            ("five", 5),
+            ("six", 6),
+            ("seven", 7),
+            ("eight", 8),
+            ("nine", 9),
+        ];
+
+        let line = &line[start_idx..];
+
+        DIGITS_MAP
+            .iter()
+            .find(|(text, _)| line.starts_with(text))
+            .map(|(_, digit)| *digit)
+    }
+
+    input
+        .trim()
+        .lines()
+        .map(|line| {
+            let first_digit = (0..line.len())
+                .find_map(|start_idx| match_digit(line, start_idx))
+                .unwrap();
+
+            let last_digit = (0..line.len())
+                .rev()
+                .find_map(|start_idx| match_digit(line, start_idx))
+                .unwrap();
+
+            first_digit * 10 + last_digit
+        })
+        .sum::<u32>()
+        .to_string()
 }
 
 fn main() {
@@ -48,12 +94,22 @@ treb7uchet
 
     #[test]
     fn test_p2_sample() {
-        assert_eq!(p2(""), "");
+        assert_eq!(
+            p2(r"
+two1nine
+eightwothree
+abcone2threexyz
+xtwone3four
+4nineeightseven2
+zoneight234
+7pqrstsixteen
+"),
+            "281"
+        );
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "54418");
     }
 }
