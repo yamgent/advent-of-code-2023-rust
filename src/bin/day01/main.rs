@@ -5,9 +5,10 @@ fn p1(input: &str) -> String {
         .trim()
         .lines()
         .map(|line| {
-            let first_digit = line.chars().find(|c| c.is_digit(10)).unwrap() as u32 - '0' as u32;
+            let first_digit =
+                line.chars().find(|c| c.is_ascii_digit()).unwrap() as u32 - '0' as u32;
             let last_digit =
-                line.chars().rev().find(|c| c.is_digit(10)).unwrap() as u32 - '0' as u32;
+                line.chars().rev().find(|c| c.is_ascii_digit()).unwrap() as u32 - '0' as u32;
             first_digit * 10 + last_digit
         })
         .sum::<u32>()
