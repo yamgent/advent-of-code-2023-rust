@@ -68,8 +68,7 @@ fn solve(input: &str) -> (String, String) {
                     let neighbours = get_neighbours_coord(&map, y, x);
                     is_part_number |= neighbours
                         .iter()
-                        .find(|(y, x)| get_symbol(&map, *y, *x) != '.')
-                        .is_some();
+                        .any(|(y, x)| get_symbol(&map, *y, *x) != '.');
                     neighbours
                         .into_iter()
                         .filter(|(y, x)| get_symbol(&map, *y, *x) == '*')
@@ -98,7 +97,7 @@ fn solve(input: &str) -> (String, String) {
     let final_gear_ratios_sum = star_graph
         .values()
         .filter(|v| v.len() > 1)
-        .map(|v| v.into_iter().product::<u32>())
+        .map(|v| v.iter().product::<u32>())
         .sum::<u32>();
 
     (final_sum.to_string(), final_gear_ratios_sum.to_string())
