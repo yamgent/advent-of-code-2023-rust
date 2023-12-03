@@ -1,6 +1,49 @@
+use std::collections::{HashMap, HashSet};
+
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/03/input.txt");
 
-fn p1(input: &str) -> String {
+fn get_symbol(map: &Vec<Vec<char>>, y: usize, x: usize) -> char {
+    if y >= map.len() || x >= map[y].len() || map[y][x].is_ascii_digit() {
+        '.'
+    } else {
+        map[y][x]
+    }
+}
+
+fn get_neighbours_coord(map: &Vec<Vec<char>>, y: usize, x: usize) -> Vec<(usize, usize)> {
+    let mut neighbours = vec![];
+
+    if y != 0 {
+        if x != 0 {
+            neighbours.push((y - 1, x - 1));
+        }
+        neighbours.push((y - 1, x));
+        if x + 1 < map[y].len() {
+            neighbours.push((y - 1, x + 1));
+        }
+    }
+
+    if x != 0 {
+        neighbours.push((y, x - 1));
+    }
+    if x + 1 < map[y].len() {
+        neighbours.push((y, x + 1));
+    }
+
+    if y + 1 < map.len() {
+        if x != 0 {
+            neighbours.push((y + 1, x - 1));
+        }
+        neighbours.push((y + 1, x));
+        if x + 1 < map[y].len() {
+            neighbours.push((y + 1, x + 1));
+        }
+    }
+
+    neighbours
+}
+
+fn solve(input: &str) -> (String, String) {
     let mut map = input
         .trim()
         .lines()
@@ -8,6 +51,7 @@ fn p1(input: &str) -> String {
         .collect::<Vec<_>>();
 
     let mut final_sum = 0;
+    let mut star_graph = HashMap::<(usize, usize), Vec<u32>>::new();
 
     (0..map.len()).for_each(|y| {
         (0..map[y].len()).for_each(|x| {
@@ -15,26 +59,23 @@ fn p1(input: &str) -> String {
                 let mut x = x;
                 let mut value = 0;
                 let mut is_part_number = false;
+                let mut stars = HashSet::new();
 
                 while x < map[y].len() && map[y][x].is_ascii_digit() {
                     value *= 10;
                     value += map[y][x] as u32 - '0' as u32;
 
-                    fn is_symbol(map: &Vec<Vec<char>>, y: usize, x: usize) -> bool {
-                        y < map.len()
-                            && x < map[y].len()
-                            && map[y][x] != '.'
-                            && !map[y][x].is_ascii_digit()
-                    }
-
-                    is_part_number |= x != 0 && y != 0 && is_symbol(&map, y - 1, x - 1);
-                    is_part_number |= y != 0 && is_symbol(&map, y - 1, x);
-                    is_part_number |= y != 0 && is_symbol(&map, y - 1, x + 1);
-                    is_part_number |= x != 0 && is_symbol(&map, y, x - 1);
-                    is_part_number |= is_symbol(&map, y, x + 1);
-                    is_part_number |= x != 0 && is_symbol(&map, y + 1, x - 1);
-                    is_part_number |= is_symbol(&map, y + 1, x);
-                    is_part_number |= is_symbol(&map, y + 1, x + 1);
+                    let neighbours = get_neighbours_coord(&map, y, x);
+                    is_part_number |= neighbours
+                        .iter()
+                        .find(|(y, x)| get_symbol(&map, *y, *x) != '.')
+                        .is_some();
+                    neighbours
+                        .into_iter()
+                        .filter(|(y, x)| get_symbol(&map, *y, *x) == '*')
+                        .for_each(|(y, x)| {
+                            stars.insert((y, x));
+                        });
 
                     map[y][x] = '.';
 
@@ -44,16 +85,31 @@ fn p1(input: &str) -> String {
                 if is_part_number {
                     final_sum += value;
                 }
+                stars.into_iter().for_each(|star| {
+                    star_graph
+                        .entry(star)
+                        .and_modify(|e| e.push(value))
+                        .or_insert(vec![value]);
+                });
             }
         });
     });
 
-    final_sum.to_string()
+    let final_gear_ratios_sum = star_graph
+        .values()
+        .filter(|v| v.len() > 1)
+        .map(|v| v.into_iter().product::<u32>())
+        .sum::<u32>();
+
+    (final_sum.to_string(), final_gear_ratios_sum.to_string())
+}
+
+fn p1(input: &str) -> String {
+    solve(input).0
 }
 
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    solve(input).1
 }
 
 fn main() {
@@ -90,12 +146,11 @@ mod tests {
 
     #[test]
     fn test_p2_sample() {
-        assert_eq!(p2(SAMPLE_INPUT), "");
+        assert_eq!(p2(SAMPLE_INPUT), "467835");
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "82824352");
     }
 }
