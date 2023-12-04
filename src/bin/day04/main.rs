@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/04/input.txt");
 
-fn p1(input: &str) -> String {
+fn get_win_counts(input: &str) -> Vec<usize> {
     input
         .trim()
         .lines()
@@ -20,12 +20,19 @@ fn p1(input: &str) -> String {
                 .split_whitespace()
                 .map(|v| v.parse::<u32>().unwrap())
                 .collect::<HashSet<_>>();
-            let matches = numbers.intersection(&winning_numbers).count() as u32;
+            numbers.intersection(&winning_numbers).count()
+        })
+        .collect()
+}
 
+fn p1(input: &str) -> String {
+    get_win_counts(input)
+        .into_iter()
+        .map(|matches| {
             if matches == 0 {
                 0
             } else {
-                2u32.pow(matches - 1)
+                2u32.pow(matches as u32 - 1)
             }
         })
         .sum::<u32>()
@@ -33,8 +40,18 @@ fn p1(input: &str) -> String {
 }
 
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    let win_counts = get_win_counts(input);
+    let mut cards_count = std::iter::repeat(1u32)
+        .take(win_counts.len())
+        .collect::<Vec<_>>();
+
+    win_counts.into_iter().enumerate().for_each(|(i, v)| {
+        ((i + 1)..(i + 1 + v as usize)).for_each(|j| {
+            cards_count[j] += cards_count[i];
+        });
+    });
+
+    cards_count.into_iter().sum::<u32>().to_string()
 }
 
 fn main() {
@@ -67,12 +84,11 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
 
     #[test]
     fn test_p2_sample() {
-        assert_eq!(p2(SAMPLE_INPUT), "");
+        assert_eq!(p2(SAMPLE_INPUT), "30");
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "19499881");
     }
 }
