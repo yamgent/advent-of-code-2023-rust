@@ -12,7 +12,6 @@ fn get_win_counts(input: &str) -> Vec<usize> {
                 .split(':')
                 .nth(1)
                 .unwrap()
-                .trim()
                 .split_whitespace()
                 .map(|v| v.parse::<u32>().unwrap())
                 .collect::<HashSet<_>>();
@@ -46,7 +45,7 @@ fn p2(input: &str) -> String {
         .collect::<Vec<_>>();
 
     win_counts.into_iter().enumerate().for_each(|(i, v)| {
-        ((i + 1)..(i + 1 + v as usize)).for_each(|j| {
+        ((i + 1)..(i + 1 + v)).for_each(|j| {
             cards_count[j] += cards_count[i];
         });
     });
