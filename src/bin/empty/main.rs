@@ -19,7 +19,7 @@ fn main() {
 mod tests {
     use super::*;
 
-    const SAMPLE_INPUT: &str = include_str!("./sample.txt");
+    const SAMPLE_INPUT: &str = r"";
 
     #[test]
     fn test_p1_sample() {
