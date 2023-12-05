@@ -59,7 +59,7 @@ impl Input {
             .map(|description| description.lines().skip(1).map(Mapper::from_line).collect())
             .collect();
 
-        Input { seeds, maps }
+        Self { seeds, maps }
     }
 }
 
