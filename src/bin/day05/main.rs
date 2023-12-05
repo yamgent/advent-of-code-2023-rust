@@ -46,6 +46,26 @@ impl Range {
             })
         }
     }
+
+    fn subtract(&self, other: &Range) -> Vec<Range> {
+        let mut leftovers = vec![];
+
+        if self.start < other.start {
+            leftovers.push(Range {
+                start: self.start,
+                len: other.start - self.start,
+            });
+        }
+
+        if self.start + self.len > other.start + other.len {
+            leftovers.push(Range {
+                start: other.start + other.len,
+                len: self.start + self.len - (other.start + other.len),
+            });
+        }
+
+        leftovers
+    }
 }
 
 #[derive(Debug)]
@@ -86,34 +106,16 @@ impl Mapper {
                 success: None,
                 failures: vec![input.clone()],
             },
-            Some(overlap) => {
-                let mut failures = vec![];
-
-                if input.start < overlap.start {
-                    failures.push(Range {
-                        start: input.start,
-                        len: overlap.start - input.start,
-                    });
-                }
-
-                if input.start + input.len > overlap.start + overlap.len {
-                    failures.push(Range {
-                        start: overlap.start + overlap.len,
-                        len: input.start + input.len - (overlap.start + overlap.len),
-                    });
-                }
-
-                ConvertResult {
-                    success: Some(Range {
-                        start: self
-                            .dst
-                            .num_from_offset(self.src.offset(overlap.start).unwrap())
-                            .unwrap(),
-                        len: overlap.len,
-                    }),
-                    failures,
-                }
-            }
+            Some(overlap) => ConvertResult {
+                success: Some(Range {
+                    start: self
+                        .dst
+                        .num_from_offset(self.src.offset(overlap.start).unwrap())
+                        .unwrap(),
+                    len: overlap.len,
+                }),
+                failures: input.subtract(&overlap),
+            },
         }
     }
 }
@@ -150,7 +152,7 @@ impl Input {
     }
 }
 
-fn handle_seed_range(seed_range: &Range, maps: &Vec<Vec<Mapper>>) -> u64 {
+fn handle_seed_range(seed_range: &Range, maps: &[Vec<Mapper>]) -> u64 {
     maps.iter()
         .fold(vec![seed_range.clone()], |ranges, current_level| {
             ranges
@@ -161,34 +163,34 @@ fn handle_seed_range(seed_range: &Range, maps: &Vec<Vec<Mapper>>) -> u64 {
                         failures: Vec<Range>,
                     }
 
-                    let final_ans = current_level.iter().fold(
+                    let final_collection = current_level.iter().fold(
                         RangeCollection {
                             successes: vec![],
                             failures: vec![range.clone()],
                         },
                         |acc, map| {
-                            let mut new_acc = RangeCollection {
-                                successes: acc.successes,
-                                failures: vec![],
-                            };
-
-                            acc.failures.iter().for_each(|failure| {
-                                let result = map.convert(failure);
-                                if let Some(success) = result.success {
-                                    new_acc.successes.push(success);
-                                }
-                                new_acc.failures.extend(result.failures);
-                            });
-
-                            new_acc
+                            acc.failures.iter().fold(
+                                RangeCollection {
+                                    successes: acc.successes,
+                                    failures: vec![],
+                                },
+                                |mut acc, failure| {
+                                    let result = map.convert(failure);
+                                    if let Some(success) = result.success {
+                                        acc.successes.push(success);
+                                    }
+                                    acc.failures.extend(result.failures);
+                                    acc
+                                },
+                            )
                         },
                     );
 
-                    final_ans
+                    final_collection
                         .successes
                         .iter()
                         .cloned()
-                        .chain(final_ans.failures.iter().cloned())
+                        .chain(final_collection.failures.iter().cloned())
                         .collect::<Vec<_>>()
                 })
                 .collect()
