@@ -9,10 +9,7 @@ struct Mapper {
 
 impl Mapper {
     fn from_line(line: &str) -> Self {
-        let mut iter = line
-            .trim()
-            .split_whitespace()
-            .map(|x| x.parse::<u64>().unwrap());
+        let mut iter = line.split_whitespace().map(|x| x.parse::<u64>().unwrap());
 
         let dst_range_start = iter.next().unwrap();
         let src_range_start = iter.next().unwrap();
@@ -47,9 +44,8 @@ impl Input {
             .split("\n\n")
             .next()
             .unwrap()
-            .split(":")
-            .skip(1)
-            .next()
+            .split(':')
+            .nth(1)
             .unwrap()
             .trim()
             .split(' ')
@@ -60,13 +56,7 @@ impl Input {
             .trim()
             .split("\n\n")
             .skip(1)
-            .map(|description| {
-                description
-                    .lines()
-                    .skip(1)
-                    .map(|line| Mapper::from_line(line))
-                    .collect()
-            })
+            .map(|description| description.lines().skip(1).map(Mapper::from_line).collect())
             .collect();
 
         Input { seeds, maps }
