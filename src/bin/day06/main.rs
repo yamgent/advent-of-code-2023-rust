@@ -27,8 +27,23 @@ fn p1(input: &str) -> String {
 }
 
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    let mut iter = input.trim().lines().map(|line| {
+        line.split(':')
+            .nth(1)
+            .unwrap()
+            .split_whitespace()
+            .collect::<String>()
+            .parse::<u64>()
+            .unwrap()
+    });
+
+    let time = iter.next().unwrap() as f64;
+    let dist = iter.next().unwrap() as f64;
+
+    let min = (0.5f64 * (time - (time * time - 4.0 * dist).sqrt()).ceil()) as u64;
+    let max = (0.5f64 * (time + (time * time - 4.0 * dist).sqrt()).floor()) as u64;
+
+    (max - min).to_string()
 }
 
 fn main() {
@@ -57,12 +72,11 @@ Distance:  9  40  200
 
     #[test]
     fn test_p2_sample() {
-        assert_eq!(p2(SAMPLE_INPUT), "");
+        assert_eq!(p2(SAMPLE_INPUT), "71503");
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "21039729");
     }
 }
