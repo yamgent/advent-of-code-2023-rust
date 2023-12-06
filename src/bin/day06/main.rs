@@ -5,7 +5,6 @@ fn p1(input: &str) -> String {
         line.split(':')
             .nth(1)
             .unwrap()
-            .trim()
             .split_whitespace()
             .map(|x| x.trim().parse::<u32>().unwrap())
             .collect::<Vec<_>>()
@@ -15,7 +14,7 @@ fn p1(input: &str) -> String {
     let distances = iter.next().unwrap();
 
     time.into_iter()
-        .zip(distances.into_iter())
+        .zip(distances)
         .map(|(time, distance)| {
             (0..=time)
                 .map(|hold| hold * (time - hold))
