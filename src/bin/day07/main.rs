@@ -73,6 +73,73 @@ impl Hand {
 
         Self { hand, hand_type }
     }
+
+    fn from_input_p2(input: &str) -> Self {
+        let num_jokers = input.trim().chars().filter(|c| *c == 'J').count() as i32;
+
+        let hand: [u8; 5] = input
+            .trim()
+            .chars()
+            .map(|c| match c {
+                '2' => 2,
+                '3' => 3,
+                '4' => 4,
+                '5' => 5,
+                '6' => 6,
+                '7' => 7,
+                '8' => 8,
+                '9' => 9,
+                'T' => 10,
+                'J' => 1,
+                'Q' => 12,
+                'K' => 13,
+                'A' => 14,
+                _ => unreachable!(),
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        let hand_type = {
+            let mut counters = hand
+                .iter()
+                .fold(HashMap::new(), |mut acc, current| {
+                    if *current != 1 {
+                        acc.entry(current).and_modify(|c| *c += 1).or_insert(1);
+                    }
+                    acc
+                })
+                .into_values()
+                .collect::<Vec<_>>();
+
+            counters.sort();
+            let len = counters.len();
+
+            if len == 0 {
+                HandType::FiveOfAKind
+            } else {
+                counters[len - 1] += num_jokers;
+
+                if counters.iter().any(|v| *v == 5) {
+                    HandType::FiveOfAKind
+                } else if counters.iter().any(|v| *v == 4) {
+                    HandType::FourOfAKind
+                } else if counters.iter().any(|v| *v == 3) && counters.iter().any(|v| *v == 2) {
+                    HandType::FullHouse
+                } else if counters.iter().any(|v| *v == 3) {
+                    HandType::ThreeOfAKind
+                } else if counters.iter().filter(|v| **v == 2).count() == 2 {
+                    HandType::TwoPair
+                } else if counters.iter().any(|v| *v == 2) {
+                    HandType::OnePair
+                } else {
+                    HandType::HighCard
+                }
+            }
+        };
+
+        Self { hand, hand_type }
+    }
 }
 
 fn p1(input: &str) -> String {
@@ -94,8 +161,21 @@ fn p1(input: &str) -> String {
 }
 
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    let mut hands = input
+        .trim()
+        .lines()
+        .map(|line| line.split_once(' ').unwrap())
+        .map(|line| (Hand::from_input_p2(line.0), line.1.parse::<u32>().unwrap()))
+        .collect::<Vec<_>>();
+
+    hands.sort();
+
+    hands
+        .into_iter()
+        .enumerate()
+        .map(|(rank, (_, bid))| (rank as u32 + 1) * bid)
+        .sum::<u32>()
+        .to_string()
 }
 
 fn main() {
@@ -127,12 +207,11 @@ QQQJA 483
 
     #[test]
     fn test_p2_sample() {
-        assert_eq!(p2(SAMPLE_INPUT), "");
+        assert_eq!(p2(SAMPLE_INPUT), "5905");
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "254494947");
     }
 }
