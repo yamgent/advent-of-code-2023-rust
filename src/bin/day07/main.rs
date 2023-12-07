@@ -2,6 +2,12 @@ use std::collections::HashMap;
 
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/07/input.txt");
 
+#[derive(Clone, Copy, Debug)]
+enum ProblemPart {
+    Part1,
+    Part2,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum HandType {
     HighCard,
@@ -20,62 +26,13 @@ struct Hand {
 }
 
 impl Hand {
-    fn from_input(input: &str) -> Self {
-        let hand: [u8; 5] = input
-            .trim()
-            .chars()
-            .map(|c| match c {
-                '2' => 2,
-                '3' => 3,
-                '4' => 4,
-                '5' => 5,
-                '6' => 6,
-                '7' => 7,
-                '8' => 8,
-                '9' => 9,
-                'T' => 10,
-                'J' => 11,
-                'Q' => 12,
-                'K' => 13,
-                'A' => 14,
-                _ => unreachable!(),
-            })
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
-
-        let hand_type = {
-            let counters = hand
-                .iter()
-                .fold(HashMap::new(), |mut acc, current| {
-                    acc.entry(current).and_modify(|c| *c += 1).or_insert(1);
-                    acc
-                })
-                .into_values()
-                .collect::<Vec<_>>();
-
-            if counters.iter().any(|v| *v == 5) {
-                HandType::FiveOfAKind
-            } else if counters.iter().any(|v| *v == 4) {
-                HandType::FourOfAKind
-            } else if counters.iter().any(|v| *v == 3) && counters.iter().any(|v| *v == 2) {
-                HandType::FullHouse
-            } else if counters.iter().any(|v| *v == 3) {
-                HandType::ThreeOfAKind
-            } else if counters.iter().filter(|v| **v == 2).count() == 2 {
-                HandType::TwoPair
-            } else if counters.iter().any(|v| *v == 2) {
-                HandType::OnePair
-            } else {
-                HandType::HighCard
-            }
+    fn from_input(input: &str, problem_part: ProblemPart) -> Self {
+        let num_jokers = match problem_part {
+            ProblemPart::Part1 => 0,
+            ProblemPart::Part2 => input.trim().chars().filter(|c| *c == 'J').count() as i32,
         };
 
-        Self { hand, hand_type }
-    }
-
-    fn from_input_p2(input: &str) -> Self {
-        let num_jokers = input.trim().chars().filter(|c| *c == 'J').count() as i32;
+        const JOKER_VALUE: u8 = 1;
 
         let hand: [u8; 5] = input
             .trim()
@@ -90,7 +47,10 @@ impl Hand {
                 '8' => 8,
                 '9' => 9,
                 'T' => 10,
-                'J' => 1,
+                'J' => match problem_part {
+                    ProblemPart::Part1 => 11,
+                    ProblemPart::Part2 => JOKER_VALUE,
+                },
                 'Q' => 12,
                 'K' => 13,
                 'A' => 14,
@@ -104,7 +64,7 @@ impl Hand {
             let mut counters = hand
                 .iter()
                 .fold(HashMap::new(), |mut acc, current| {
-                    if *current != 1 {
+                    if *current != JOKER_VALUE {
                         acc.entry(current).and_modify(|c| *c += 1).or_insert(1);
                     }
                     acc
@@ -115,9 +75,12 @@ impl Hand {
             counters.sort();
             let len = counters.len();
 
+            // we need to check len == 0, otherwise len - 1 is an underflow
             if len == 0 {
+                // all are jokers
                 HandType::FiveOfAKind
             } else {
+                // hint from reddit: just use jokers on the label that has the most cards
                 counters[len - 1] += num_jokers;
 
                 if counters.iter().any(|v| *v == 5) {
@@ -142,12 +105,17 @@ impl Hand {
     }
 }
 
-fn p1(input: &str) -> String {
+fn solve(input: &str, problem_part: ProblemPart) -> String {
     let mut hands = input
         .trim()
         .lines()
         .map(|line| line.split_once(' ').unwrap())
-        .map(|line| (Hand::from_input(line.0), line.1.parse::<u32>().unwrap()))
+        .map(|line| {
+            (
+                Hand::from_input(line.0, problem_part),
+                line.1.parse::<u32>().unwrap(),
+            )
+        })
         .collect::<Vec<_>>();
 
     hands.sort();
@@ -160,22 +128,12 @@ fn p1(input: &str) -> String {
         .to_string()
 }
 
+fn p1(input: &str) -> String {
+    solve(input, ProblemPart::Part1)
+}
+
 fn p2(input: &str) -> String {
-    let mut hands = input
-        .trim()
-        .lines()
-        .map(|line| line.split_once(' ').unwrap())
-        .map(|line| (Hand::from_input_p2(line.0), line.1.parse::<u32>().unwrap()))
-        .collect::<Vec<_>>();
-
-    hands.sort();
-
-    hands
-        .into_iter()
-        .enumerate()
-        .map(|(rank, (_, bid))| (rank as u32 + 1) * bid)
-        .sum::<u32>()
-        .to_string()
+    solve(input, ProblemPart::Part2)
 }
 
 fn main() {
