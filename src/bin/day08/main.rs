@@ -81,9 +81,52 @@ fn p1(input: &str) -> String {
     count.to_string()
 }
 
+fn gcd(mut a: u64, mut b: u64) -> u64 {
+    while b != 0 {
+        let r = a % b;
+        a = b;
+        b = r;
+    }
+    a
+}
+
+fn lcm(a: u64, b: u64) -> u64 {
+    (a * b) / gcd(a, b)
+}
+
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    let map = Map::parse_input(input);
+
+    let all_cycles = map
+        .nodes
+        .keys()
+        .filter(|k| k.ends_with('A'))
+        .cloned()
+        .map(|node| {
+            let mut node = node.clone();
+            let mut count = 0;
+            let mut step = 0;
+
+            while !node.ends_with('Z') {
+                count += 1;
+
+                let direction = map.instructions[step];
+                step = (step + 1) % map.instructions.len();
+
+                node = {
+                    let node_content = map.nodes.get(&node).unwrap();
+                    match direction {
+                        Lookup::Left => node_content.0.to_string(),
+                        Lookup::Right => node_content.1.to_string(),
+                    }
+                };
+            }
+
+            count
+        })
+        .collect::<Vec<_>>();
+
+    all_cycles.iter().fold(1, |acc, x| lcm(acc, *x)).to_string()
 }
 
 fn main() {
@@ -113,6 +156,18 @@ AAA = (BBB, BBB)
 BBB = (AAA, ZZZ)
 ZZZ = (ZZZ, ZZZ)
 ";
+    const SAMPLE_INPUT_3: &str = r"
+LR
+
+11A = (11B, XXX)
+11B = (XXX, 11Z)
+11Z = (11B, XXX)
+22A = (22B, XXX)
+22B = (22C, 22C)
+22C = (22Z, 22Z)
+22Z = (22B, 22B)
+XXX = (XXX, XXX)
+";
 
     #[test]
     fn test_p1_sample() {
@@ -127,12 +182,11 @@ ZZZ = (ZZZ, ZZZ)
 
     #[test]
     fn test_p2_sample() {
-        assert_eq!(p2(SAMPLE_INPUT), "");
+        assert_eq!(p2(SAMPLE_INPUT_3), "6");
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "14616363770447");
     }
 }
