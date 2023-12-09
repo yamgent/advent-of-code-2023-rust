@@ -1,6 +1,6 @@
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/09/input.txt");
 
-fn get_next_value(history: &[i64]) -> (i64, i64) {
+fn extrapolate_once(history: &[i64]) -> (i64, i64) {
     let mut diffs = vec![history.to_vec()];
 
     while !diffs.iter().next_back().unwrap().iter().all(|x| *x == 0) {
@@ -15,16 +15,12 @@ fn get_next_value(history: &[i64]) -> (i64, i64) {
         );
     }
 
-    (
-        diffs
-            .iter()
-            .rev()
-            .fold(0, |acc, diff| acc + diff.iter().next_back().unwrap_or(&0)),
-        diffs
-            .iter()
-            .rev()
-            .fold(0, |acc, diff| diff.iter().next().unwrap_or(&0) - acc),
-    )
+    diffs.iter().rev().fold((0, 0), |acc, diff| {
+        (
+            acc.0 + diff.iter().next_back().unwrap_or(&0),
+            diff.iter().next().unwrap_or(&0) - acc.1,
+        )
+    })
 }
 
 fn solve(input: &str) -> (i64, i64) {
@@ -36,7 +32,7 @@ fn solve(input: &str) -> (i64, i64) {
                 .map(|x| x.parse::<i64>().unwrap())
                 .collect::<Vec<_>>()
         })
-        .map(|line| get_next_value(&line))
+        .map(|line| extrapolate_once(&line))
         .fold((0, 0), |acc, current| {
             (acc.0 + current.0, acc.1 + current.1)
         })
