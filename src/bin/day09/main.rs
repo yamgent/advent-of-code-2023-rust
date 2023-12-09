@@ -1,14 +1,13 @@
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/09/input.txt");
 
 fn get_next_value(history: &[i64]) -> i64 {
-    let mut diffs = vec![history.iter().copied().collect::<Vec<_>>()];
+    let mut diffs = vec![history.to_vec()];
 
-    while !diffs.iter().rev().next().unwrap().iter().all(|x| *x == 0) {
+    while !diffs.iter().next_back().unwrap().iter().all(|x| *x == 0) {
         diffs.push(
             diffs
                 .iter()
-                .rev()
-                .next()
+                .next_back()
                 .unwrap()
                 .windows(2)
                 .map(|vals| vals[1] - vals[0])
@@ -17,7 +16,7 @@ fn get_next_value(history: &[i64]) -> i64 {
     }
 
     diffs.into_iter().rev().fold(0, |acc, diff| {
-        acc + diff.into_iter().rev().next().unwrap_or(0)
+        acc + diff.into_iter().next_back().unwrap_or(0)
     })
 }
 
