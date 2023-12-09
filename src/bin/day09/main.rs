@@ -1,6 +1,6 @@
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/09/input.txt");
 
-fn get_next_value(history: &[i64]) -> i64 {
+fn get_next_value(history: &[i64]) -> (i64, i64) {
     let mut diffs = vec![history.to_vec()];
 
     while !diffs.iter().next_back().unwrap().iter().all(|x| *x == 0) {
@@ -15,12 +15,19 @@ fn get_next_value(history: &[i64]) -> i64 {
         );
     }
 
-    diffs.into_iter().rev().fold(0, |acc, diff| {
-        acc + diff.into_iter().next_back().unwrap_or(0)
-    })
+    (
+        diffs
+            .iter()
+            .rev()
+            .fold(0, |acc, diff| acc + diff.iter().next_back().unwrap_or(&0)),
+        diffs
+            .iter()
+            .rev()
+            .fold(0, |acc, diff| diff.iter().next().unwrap_or(&0) - acc),
+    )
 }
 
-fn p1(input: &str) -> String {
+fn solve(input: &str) -> (i64, i64) {
     input
         .trim()
         .lines()
@@ -30,13 +37,17 @@ fn p1(input: &str) -> String {
                 .collect::<Vec<_>>()
         })
         .map(|line| get_next_value(&line))
-        .sum::<i64>()
-        .to_string()
+        .fold((0, 0), |acc, current| {
+            (acc.0 + current.0, acc.1 + current.1)
+        })
+}
+
+fn p1(input: &str) -> String {
+    solve(input).0.to_string()
 }
 
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    solve(input).1.to_string()
 }
 
 fn main() {
@@ -66,12 +77,11 @@ mod tests {
 
     #[test]
     fn test_p2_sample() {
-        assert_eq!(p2(SAMPLE_INPUT), "");
+        assert_eq!(p2(SAMPLE_INPUT), "2");
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "1136");
     }
 }
