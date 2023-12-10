@@ -218,9 +218,7 @@ impl Map {
             width: self.width,
             height: self.height,
             content: self
-                .content
-                .iter()
-                .map(|(coord, _)| (*coord, Pipe::None))
+                .content.keys().map(|coord| (*coord, Pipe::None))
                 .collect(),
             starting_point: self.starting_point,
         };
@@ -276,37 +274,35 @@ impl Map {
                     } else {
                         Some(Pipe::None)
                     }
-                } else {
-                    if coord_half.x_half {
-                        let left = self.has_exit(
-                            half_to_coord(&coord_half.neighbour(Direction::Left)).unwrap(),
-                            Direction::Left.opposite(),
-                        );
-                        let right = self.has_exit(
-                            half_to_coord(&coord_half.neighbour(Direction::Right)).unwrap(),
-                            Direction::Right.opposite(),
-                        );
+                } else if coord_half.x_half {
+                    let left = self.has_exit(
+                        half_to_coord(&coord_half.neighbour(Direction::Left)).unwrap(),
+                        Direction::Left.opposite(),
+                    );
+                    let right = self.has_exit(
+                        half_to_coord(&coord_half.neighbour(Direction::Right)).unwrap(),
+                        Direction::Right.opposite(),
+                    );
 
-                        if left && right {
-                            Some(Pipe::NS)
-                        } else {
-                            Some(Pipe::None)
-                        }
+                    if left && right {
+                        Some(Pipe::NS)
                     } else {
-                        let up = self.has_exit(
-                            half_to_coord(&coord_half.neighbour(Direction::Up)).unwrap(),
-                            Direction::Up.opposite(),
-                        );
-                        let down = self.has_exit(
-                            half_to_coord(&coord_half.neighbour(Direction::Down)).unwrap(),
-                            Direction::Down.opposite(),
-                        );
+                        Some(Pipe::None)
+                    }
+                } else {
+                    let up = self.has_exit(
+                        half_to_coord(&coord_half.neighbour(Direction::Up)).unwrap(),
+                        Direction::Up.opposite(),
+                    );
+                    let down = self.has_exit(
+                        half_to_coord(&coord_half.neighbour(Direction::Down)).unwrap(),
+                        Direction::Down.opposite(),
+                    );
 
-                        if up && down {
-                            Some(Pipe::NS)
-                        } else {
-                            Some(Pipe::None)
-                        }
+                    if up && down {
+                        Some(Pipe::NS)
+                    } else {
+                        Some(Pipe::None)
                     }
                 }
             }
@@ -372,7 +368,7 @@ fn p2(input: &str) -> String {
     ((0..clean_map.width)
         .flat_map(|x| (0..clean_map.height).map(move |y| (x, y)))
         .filter(|coord| {
-            !visited.contains(coord) && matches!(clean_map.content.get(&coord), Some(&Pipe::None))
+            !visited.contains(coord) && matches!(clean_map.content.get(coord), Some(&Pipe::None))
         })
         .count() as i32)
         .to_string()
