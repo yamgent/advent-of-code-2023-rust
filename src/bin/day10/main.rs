@@ -218,7 +218,9 @@ impl Map {
             width: self.width,
             height: self.height,
             content: self
-                .content.keys().map(|coord| (*coord, Pipe::None))
+                .content
+                .keys()
+                .map(|coord| (*coord, Pipe::None))
                 .collect(),
             starting_point: self.starting_point,
         };
@@ -300,7 +302,7 @@ impl Map {
                     );
 
                     if up && down {
-                        Some(Pipe::NS)
+                        Some(Pipe::EW)
                     } else {
                         Some(Pipe::None)
                     }
@@ -427,7 +429,7 @@ LJ.LJ
         assert_eq!(p1(ACTUAL_INPUT), "7097");
     }
 
-    const SAMPLE_INPUT_P2: [&str; 5] = [
+    const SAMPLE_INPUT_P2: [&str; 6] = [
         r"
 S--7
 |..|
@@ -480,6 +482,15 @@ L---JF-JLJ.||-FJLJJ7
 L.L7LFJ|||||FJL7||LJ
 L7JLJL-JLJLJL--JLJ.L
 ",
+        r"
+..S-7..
+..|.|..
+F-J.L-7
+|.....|
+L-7.F-J
+..|.|..
+..L-J..
+",
     ];
 
     #[test]
@@ -489,6 +500,7 @@ L7JLJL-JLJLJL--JLJ.L
         assert_eq!(p2(SAMPLE_INPUT_P2[2]), "4");
         assert_eq!(p2(SAMPLE_INPUT_P2[3]), "8");
         assert_eq!(p2(SAMPLE_INPUT_P2[4]), "10");
+        assert_eq!(p2(SAMPLE_INPUT_P2[5]), "9");
     }
 
     #[test]
