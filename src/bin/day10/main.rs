@@ -148,43 +148,61 @@ impl Map {
         let neighbour = pos.neighbour(dir);
         self.has_exit(pos, dir) && self.has_exit(neighbour, dir.opposite())
     }
+
+    fn clean_up_pipes_not_in_loop(&self) -> (Self, i32) {
+        let mut result = Self {
+            content: self
+                .content
+                .iter()
+                .map(|(coord, _)| (*coord, Pipe::None))
+                .collect(),
+            starting_point: self.starting_point,
+        };
+
+        let mut visited: HashSet<Coord> = HashSet::new();
+        let mut level = -1;
+        let mut current: HashSet<Coord> = HashSet::from_iter([self.starting_point]);
+
+        while !current.is_empty() {
+            level += 1;
+
+            visited.extend(&current);
+            current = current
+                .into_iter()
+                .flat_map(|pos| {
+                    [
+                        Direction::Up,
+                        Direction::Down,
+                        Direction::Left,
+                        Direction::Right,
+                    ]
+                    .into_iter()
+                    .flat_map(|dir| {
+                        let neighbour = pos.neighbour(dir);
+                        if !visited.contains(&neighbour) && self.is_connected(pos, dir) {
+                            Some(neighbour)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                })
+                .collect()
+        }
+
+        visited.into_iter().for_each(|coord| {
+            *result.content.get_mut(&coord).unwrap() = *self.content.get(&coord).unwrap();
+        });
+
+        (result, level)
+    }
 }
 
 fn p1(input: &str) -> String {
-    let map = Map::parse_input(input);
-
-    let mut visited: HashSet<Coord> = HashSet::new();
-    let mut level = -1;
-    let mut current: HashSet<Coord> = HashSet::from_iter([map.starting_point]);
-
-    while !current.is_empty() {
-        level += 1;
-
-        visited.extend(&current);
-        current = current
-            .into_iter()
-            .flat_map(|pos| {
-                [
-                    Direction::Up,
-                    Direction::Down,
-                    Direction::Left,
-                    Direction::Right,
-                ]
-                .into_iter()
-                .flat_map(|dir| {
-                    let neighbour = pos.neighbour(dir);
-                    if !visited.contains(&neighbour) && map.is_connected(pos, dir) {
-                        Some(neighbour)
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>()
-            })
-            .collect()
-    }
-
-    level.to_string()
+    Map::parse_input(input)
+        .clean_up_pipes_not_in_loop()
+        .1
+        .to_string()
 }
 
 fn p2(input: &str) -> String {
