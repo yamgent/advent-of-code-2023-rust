@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/10/input.txt");
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Pipe {
     None,
     Starting,
@@ -33,6 +33,8 @@ impl Pipe {
 type Coord = (i32, i32);
 
 struct Map {
+    width: i32,
+    height: i32,
     content: HashMap<Coord, Pipe>,
     starting_point: Coord,
 }
@@ -57,7 +59,7 @@ impl Direction {
 }
 
 trait Neighbour {
-    fn neighbour(&self, dir: Direction) -> Coord;
+    fn neighbour(&self, dir: Direction) -> Self;
 }
 
 impl Neighbour for Coord {
@@ -68,6 +70,66 @@ impl Neighbour for Coord {
             Direction::Left => (self.0 - 1, self.1),
             Direction::Right => (self.0 + 1, self.1),
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct CoordHalf {
+    x: i32,
+    x_half: bool,
+    y: i32,
+    y_half: bool,
+}
+
+impl Neighbour for CoordHalf {
+    fn neighbour(&self, dir: Direction) -> CoordHalf {
+        let mut result = *self;
+
+        match dir {
+            Direction::Up => {
+                if !result.y_half {
+                    result.y -= 1;
+                }
+                result.y_half = !result.y_half;
+            }
+            Direction::Down => {
+                if result.y_half {
+                    result.y += 1;
+                }
+                result.y_half = !result.y_half;
+            }
+            Direction::Left => {
+                if !result.x_half {
+                    result.x -= 1;
+                }
+                result.x_half = !result.x_half;
+            }
+            Direction::Right => {
+                if result.x_half {
+                    result.x += 1;
+                }
+                result.x_half = !result.x_half;
+            }
+        }
+
+        result
+    }
+}
+
+fn coord_to_half(coord: &Coord) -> CoordHalf {
+    CoordHalf {
+        x: coord.0,
+        x_half: false,
+        y: coord.1,
+        y_half: false,
+    }
+}
+
+fn half_to_coord(coord_half: &CoordHalf) -> Option<Coord> {
+    if coord_half.x_half || coord_half.y_half {
+        None
+    } else {
+        Some((coord_half.x, coord_half.y))
     }
 }
 
@@ -127,6 +189,8 @@ impl Map {
         }
 
         fix_starting_point_pipe(Self {
+            width: input.trim().lines().next().unwrap().chars().count() as i32,
+            height: input.trim().lines().count() as i32,
             content,
             starting_point,
         })
@@ -151,6 +215,8 @@ impl Map {
 
     fn clean_up_pipes_not_in_loop(&self) -> (Self, i32) {
         let mut result = Self {
+            width: self.width,
+            height: self.height,
             content: self
                 .content
                 .iter()
@@ -196,6 +262,57 @@ impl Map {
 
         (result, level)
     }
+
+    fn get_pipe_at_coord_half(&self, coord_half: &CoordHalf) -> Option<Pipe> {
+        match half_to_coord(coord_half) {
+            None => {
+                if coord_half.x_half && coord_half.y_half {
+                    if coord_half.x < 0
+                        || coord_half.x > self.width
+                        || coord_half.y < 0
+                        || coord_half.y > self.height
+                    {
+                        None
+                    } else {
+                        Some(Pipe::None)
+                    }
+                } else {
+                    if coord_half.x_half {
+                        let left = self.has_exit(
+                            half_to_coord(&coord_half.neighbour(Direction::Left)).unwrap(),
+                            Direction::Left.opposite(),
+                        );
+                        let right = self.has_exit(
+                            half_to_coord(&coord_half.neighbour(Direction::Right)).unwrap(),
+                            Direction::Right.opposite(),
+                        );
+
+                        if left && right {
+                            Some(Pipe::NS)
+                        } else {
+                            Some(Pipe::None)
+                        }
+                    } else {
+                        let up = self.has_exit(
+                            half_to_coord(&coord_half.neighbour(Direction::Up)).unwrap(),
+                            Direction::Up.opposite(),
+                        );
+                        let down = self.has_exit(
+                            half_to_coord(&coord_half.neighbour(Direction::Down)).unwrap(),
+                            Direction::Down.opposite(),
+                        );
+
+                        if up && down {
+                            Some(Pipe::NS)
+                        } else {
+                            Some(Pipe::None)
+                        }
+                    }
+                }
+            }
+            Some(coord) => self.content.get(&coord).copied(),
+        }
+    }
 }
 
 fn p1(input: &str) -> String {
@@ -206,8 +323,59 @@ fn p1(input: &str) -> String {
 }
 
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    let clean_map = Map::parse_input(input).clean_up_pipes_not_in_loop().0;
+
+    let outside_points = (0..clean_map.width)
+        .flat_map(|x| [(x, 0), (x, clean_map.height - 1)])
+        .chain((0..clean_map.height).flat_map(|y| [(0, y), (clean_map.width - 1, y)]))
+        .filter(|coord| clean_map.content.get(coord).unwrap() == &Pipe::None)
+        .map(|coord| coord_to_half(&coord));
+
+    let mut visited: HashSet<CoordHalf> = HashSet::new();
+    let mut current: HashSet<CoordHalf> = HashSet::from_iter(outside_points);
+
+    while !current.is_empty() {
+        visited.extend(&current);
+        current = current
+            .into_iter()
+            .flat_map(|pos| {
+                [
+                    Direction::Up,
+                    Direction::Down,
+                    Direction::Left,
+                    Direction::Right,
+                ]
+                .into_iter()
+                .flat_map(|dir| {
+                    let neighbour = pos.neighbour(dir);
+                    if !visited.contains(&neighbour)
+                        && matches!(
+                            clean_map.get_pipe_at_coord_half(&neighbour),
+                            Some(Pipe::None)
+                        )
+                    {
+                        Some(neighbour)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
+    let visited: HashSet<Coord> = visited
+        .into_iter()
+        .flat_map(|half| half_to_coord(&half))
+        .collect();
+
+    ((0..clean_map.width)
+        .flat_map(|x| (0..clean_map.height).map(move |y| (x, y)))
+        .filter(|coord| {
+            !visited.contains(coord) && matches!(clean_map.content.get(&coord), Some(&Pipe::None))
+        })
+        .count() as i32)
+        .to_string()
 }
 
 fn main() {
@@ -263,7 +431,13 @@ LJ.LJ
         assert_eq!(p1(ACTUAL_INPUT), "7097");
     }
 
-    const SAMPLE_INPUT_P2: [&str; 4] = [
+    const SAMPLE_INPUT_P2: [&str; 5] = [
+        r"
+S--7
+|..|
+|..|
+L--J
+",
         r"
 ...........
 .S-------7.
@@ -313,17 +487,16 @@ L7JLJL-JLJLJL--JLJ.L
     ];
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_sample() {
         assert_eq!(p2(SAMPLE_INPUT_P2[0]), "4");
         assert_eq!(p2(SAMPLE_INPUT_P2[1]), "4");
-        assert_eq!(p2(SAMPLE_INPUT_P2[2]), "8");
+        assert_eq!(p2(SAMPLE_INPUT_P2[2]), "4");
         assert_eq!(p2(SAMPLE_INPUT_P2[3]), "8");
+        assert_eq!(p2(SAMPLE_INPUT_P2[4]), "10");
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "355");
     }
 }
