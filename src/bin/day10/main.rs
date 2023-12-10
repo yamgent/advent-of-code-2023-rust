@@ -2,14 +2,42 @@ use std::collections::{HashMap, HashSet};
 
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/10/input.txt");
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum Pipe {
+    None,
+    Starting,
+    NS,
+    EW,
+    NE,
+    SE,
+    NW,
+    SW,
+}
+
+impl Pipe {
+    fn parse(ch: char) -> Self {
+        match ch {
+            '.' => Pipe::None,
+            'S' => Pipe::Starting,
+            '|' => Pipe::NS,
+            '-' => Pipe::EW,
+            'L' => Pipe::NE,
+            'F' => Pipe::SE,
+            'J' => Pipe::NW,
+            '7' => Pipe::SW,
+            _ => unreachable!(),
+        }
+    }
+}
+
 type Coord = (i32, i32);
 
 struct Map {
-    content: HashMap<Coord, char>,
+    content: HashMap<Coord, Pipe>,
     starting_point: Coord,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum Direction {
     Up,
     Down,
@@ -49,39 +77,47 @@ impl Map {
             line.trim()
                 .chars()
                 .enumerate()
-                .map(move |(x, c)| ((x as i32, y as i32), c))
+                .map(move |(x, c)| ((x as i32, y as i32), Pipe::parse(c)))
         }));
 
-        let starting_point = content
+        let starting_point = *content
             .iter()
-            .find(|(_, ch)| **ch == 'S')
+            .find(|(_, ch)| **ch == Pipe::Starting)
             .unwrap()
-            .0
-            .clone();
+            .0;
 
         fn fix_starting_point_pipe(mut map: Map) -> Map {
             let starting_point_pipe = {
-                let (left, right, up, down) = (
-                    map.has_exit(
-                        map.starting_point.neighbour(Direction::Left),
-                        Direction::Right,
-                    ),
-                    map.has_exit(
-                        map.starting_point.neighbour(Direction::Right),
+                let exits: HashMap<Direction, bool> = HashMap::from_iter(
+                    [
+                        Direction::Up,
+                        Direction::Down,
                         Direction::Left,
-                    ),
-                    map.has_exit(map.starting_point.neighbour(Direction::Up), Direction::Down),
-                    map.has_exit(map.starting_point.neighbour(Direction::Down), Direction::Up),
+                        Direction::Right,
+                    ]
+                    .into_iter()
+                    .map(|dir| {
+                        (
+                            dir,
+                            map.has_exit(map.starting_point.neighbour(dir), dir.opposite()),
+                        )
+                    }),
+                );
+                let (left, right, up, down) = (
+                    *exits.get(&Direction::Left).unwrap(),
+                    *exits.get(&Direction::Right).unwrap(),
+                    *exits.get(&Direction::Up).unwrap(),
+                    *exits.get(&Direction::Down).unwrap(),
                 );
 
                 if left && up {
-                    'J'
+                    Pipe::NW
                 } else if left && down {
-                    '7'
+                    Pipe::SW
                 } else if right && up {
-                    'L'
+                    Pipe::NE
                 } else if right && down {
-                    'F'
+                    Pipe::SE
                 } else {
                     unreachable!()
                 }
@@ -100,10 +136,10 @@ impl Map {
         self.content
             .get(&pos)
             .map(|ch| match dir {
-                Direction::Up => *ch == '|' || *ch == 'L' || *ch == 'J',
-                Direction::Down => *ch == '|' || *ch == '7' || *ch == 'F',
-                Direction::Left => *ch == '-' || *ch == 'J' || *ch == '7',
-                Direction::Right => *ch == '-' || *ch == 'L' || *ch == 'F',
+                Direction::Up => matches!(*ch, Pipe::NS | Pipe::NE | Pipe::NW),
+                Direction::Down => matches!(*ch, Pipe::NS | Pipe::SE | Pipe::SW),
+                Direction::Left => matches!(*ch, Pipe::EW | Pipe::NW | Pipe::SW),
+                Direction::Right => matches!(*ch, Pipe::EW | Pipe::NE | Pipe::SE),
             })
             .unwrap_or(false)
     }
@@ -117,34 +153,35 @@ impl Map {
 fn p1(input: &str) -> String {
     let map = Map::parse_input(input);
 
-    let mut visited: HashSet<Coord> = HashSet::from_iter([map.starting_point]);
+    let mut visited: HashSet<Coord> = HashSet::new();
     let mut level = -1;
-    let mut current = vec![map.starting_point];
+    let mut current: HashSet<Coord> = HashSet::from_iter([map.starting_point]);
 
     while !current.is_empty() {
         level += 1;
 
-        let mut next = vec![];
-
-        current.iter().for_each(|pos| {
-            visited.insert(*pos);
-
-            [
-                Direction::Up,
-                Direction::Down,
-                Direction::Left,
-                Direction::Right,
-            ]
+        visited.extend(&current);
+        current = current
             .into_iter()
-            .for_each(|dir| {
-                let neighbour = pos.neighbour(dir);
-                if !visited.contains(&neighbour) && map.is_connected(*pos, dir) {
-                    next.push(neighbour);
-                }
-            });
-        });
-
-        current = next;
+            .flat_map(|pos| {
+                [
+                    Direction::Up,
+                    Direction::Down,
+                    Direction::Left,
+                    Direction::Right,
+                ]
+                .into_iter()
+                .flat_map(|dir| {
+                    let neighbour = pos.neighbour(dir);
+                    if !visited.contains(&neighbour) && map.is_connected(pos, dir) {
+                        Some(neighbour)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+            })
+            .collect()
     }
 
     level.to_string()
