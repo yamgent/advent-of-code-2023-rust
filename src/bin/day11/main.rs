@@ -58,6 +58,7 @@ impl Universe {
             / 2
     }
 
+    #[allow(dead_code)]
     fn get_grid_display(&self) -> String {
         let width = self.galaxies.iter().map(|(x, _)| x).max().unwrap() + 1;
         let height = self.galaxies.iter().map(|(_, y)| y).max().unwrap() + 1;
