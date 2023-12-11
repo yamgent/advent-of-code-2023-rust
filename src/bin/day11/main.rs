@@ -20,7 +20,7 @@ impl Universe {
         }
     }
 
-    fn expand(&mut self) {
+    fn expand(&mut self, count: usize) {
         let width = self.galaxies.iter().map(|(x, _)| x).max().unwrap() + 1;
         let height = self.galaxies.iter().map(|(_, y)| y).max().unwrap() + 1;
 
@@ -29,7 +29,7 @@ impl Universe {
                 self.galaxies
                     .iter_mut()
                     .filter(|(x, _)| *x > current_x)
-                    .for_each(|coord| coord.0 += 1);
+                    .for_each(|coord| coord.0 += count);
             }
         });
 
@@ -38,7 +38,7 @@ impl Universe {
                 self.galaxies
                     .iter_mut()
                     .filter(|(_, y)| *y > current_y)
-                    .for_each(|coord| coord.1 += 1);
+                    .for_each(|coord| coord.1 += count);
             }
         });
     }
@@ -87,13 +87,14 @@ impl Universe {
 
 fn p1(input: &str) -> String {
     let mut universe = Universe::parse(input);
-    universe.expand();
+    universe.expand(1);
     universe.get_galaxies_pairs_steps_sum().to_string()
 }
 
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    let mut universe = Universe::parse(input);
+    universe.expand(999_999);
+    universe.get_galaxies_pairs_steps_sum().to_string()
 }
 
 fn main() {
@@ -143,7 +144,7 @@ mod tests {
 #....#.......
 ";
         let mut universe = Universe::parse(SAMPLE_INPUT);
-        universe.expand();
+        universe.expand(1);
         assert_eq!(
             universe.get_grid_display(),
             SAMPLE_INPUT_EXPANDED.trim().to_string()
@@ -161,13 +162,26 @@ mod tests {
     }
 
     #[test]
-    fn test_p2_sample() {
-        assert_eq!(p2(SAMPLE_INPUT), "");
+    fn test_p2_smaller_expand() {
+        {
+            let mut universe = Universe::parse(SAMPLE_INPUT);
+            universe.expand(9);
+            assert_eq!(universe.get_galaxies_pairs_steps_sum(), 1030);
+        }
+        {
+            let mut universe = Universe::parse(SAMPLE_INPUT);
+            universe.expand(99);
+            assert_eq!(universe.get_galaxies_pairs_steps_sum(), 8410);
+        }
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
+    fn test_p2_sample() {
+        assert_eq!(p2(SAMPLE_INPUT), "82000210");
+    }
+
+    #[test]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "597714117556");
     }
 }
