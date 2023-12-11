@@ -9,14 +9,19 @@ struct Universe {
 impl Universe {
     fn parse(input: &str) -> Self {
         Self {
-            galaxies: Vec::from_iter(input.trim().lines().enumerate().flat_map(|(y, line)| {
-                line.trim()
-                    .chars()
-                    .enumerate()
-                    .filter(|(_, ch)| *ch == '#')
-                    .map(|(x, _)| (x, y))
-                    .collect::<Vec<_>>()
-            })),
+            galaxies: input
+                .trim()
+                .lines()
+                .enumerate()
+                .flat_map(|(y, line)| {
+                    line.trim()
+                        .chars()
+                        .enumerate()
+                        .filter(|(_, ch)| *ch == '#')
+                        .map(|(x, _)| (x, y))
+                        .collect::<Vec<_>>()
+                })
+                .collect(),
         }
     }
 
