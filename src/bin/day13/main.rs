@@ -39,7 +39,6 @@ fn find_reflection_line(
     } as i64;
 
     (0..(width - 1))
-        .into_iter()
         .filter(|x| *x != x_skip - 1)
         .find(|x| {
             rocks.iter().all(|rock| {
@@ -50,7 +49,6 @@ fn find_reflection_line(
         .map(|x| x + 1)
         .or_else(|| {
             (0..(height - 1))
-                .into_iter()
                 .filter(|y| *y != y_skip - 1)
                 .find(|y| {
                     rocks.iter().all(|rock| {
@@ -95,8 +93,7 @@ fn solve_p2(pattern: &str) -> u64 {
     let old_reflection_line = find_reflection_line(&rocks, width, height, None).unwrap();
 
     (0..width)
-        .into_iter()
-        .flat_map(|x| (0..height).into_iter().map(move |y| (x, y)))
+        .flat_map(|x| (0..height).map(move |y| (x, y)))
         .find_map(|coord| {
             let exist = rocks.contains(&coord);
 
