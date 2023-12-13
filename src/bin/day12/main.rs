@@ -1,133 +1,142 @@
+use std::collections::HashMap;
+
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/12/input.txt");
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum Status {
-    // '.'
-    Operational,
-    // '#'
-    Damaged,
-    // '?'
-    Unknown,
+fn parse(input: &str) -> (String, Vec<u64>) {
+    let (springs, count) = input.trim().split_once(' ').unwrap();
+    let springs = springs.trim().to_string();
+    let count = count
+        .trim()
+        .split(',')
+        .map(|x| x.parse::<u64>().unwrap())
+        .rev()
+        .collect::<Vec<_>>();
+    (springs, count)
 }
 
-impl Status {
-    fn parse(ch: char) -> Self {
-        match ch {
-            '.' => Status::Operational,
-            '#' => Status::Damaged,
-            '?' => Status::Unknown,
-            _ => unreachable!(),
-        }
-    }
+// taken from reddit: https://www.reddit.com/r/adventofcode/comments/18hg99r/2023_day_12_simple_tutorial_with_memoization/
+/*
+solve(springs, groups, cache, i):
+    if num groups is 0:
+        if any '#' remaining in springs return 0
+        else return 1
 
-    fn apply(statuses: &[Self], permutation: u64) -> Vec<Self> {
-        statuses
-            .iter()
-            .fold(
-                (Vec::new(), permutation),
-                |(mut result, permutation), current_status| {
-                    if *current_status == Status::Unknown {
-                        let assigned = permutation % 2;
-                        result.push(if assigned == 0 {
-                            Status::Damaged
-                        } else {
-                            Status::Operational
-                        });
-                        (result, permutation / 2)
-                    } else {
-                        result.push(*current_status);
-                        (result, permutation)
+    advance i to the next available '?' or '#'
+
+    if i > length of springs return 0
+
+    if (i, num groups) is in cache, return it
+
+    if we can fill the springs at i with the first group in groups:
+        recursively call with the groups after that at index: i + groupsize + 1
+
+    if the current spot is '?':
+        recursively call with current groups at the next index
+
+    add the result to the cache
+    return result
+*/
+fn solve(input: (String, Vec<u64>)) -> u64 {
+    fn solve_recur(
+        springs: &String,
+        groups: Vec<u64>,
+        cache: &mut HashMap<(usize, usize), u64>,
+        i: usize,
+    ) -> u64 {
+        if groups.is_empty() {
+            if springs.chars().skip(i).any(|ch| ch == '#') {
+                0
+            } else {
+                1
+            }
+        } else {
+            let next = springs
+                .chars()
+                .enumerate()
+                .skip(i)
+                .find(|(_, ch)| *ch == '?' || *ch == '#');
+
+            if let Some((i, ch)) = next {
+                let cache_key = (i, groups.len());
+
+                if cache.contains_key(&cache_key) {
+                    *cache.get(&cache_key).unwrap()
+                } else {
+                    let mut result = 0;
+
+                    let first_group_size = groups.iter().last().unwrap();
+
+                    if (i + (*first_group_size as usize) <= springs.len())
+                        && springs
+                            .chars()
+                            .skip(i)
+                            .take(*first_group_size as usize)
+                            .all(|ch| ch == '?' || ch == '#')
+                        && springs
+                            .chars()
+                            .nth(i + *first_group_size as usize)
+                            .map(|ch| ch != '#')
+                            .unwrap_or(true)
+                    {
+                        result += solve_recur(
+                            springs,
+                            groups.iter().take(groups.len() - 1).copied().collect(),
+                            cache,
+                            i + *first_group_size as usize + 1,
+                        );
                     }
-                },
-            )
-            .0
-    }
 
-    fn to_counts(statuses: &[Status]) -> Vec<u64> {
-        let (damaged, mut acc) = statuses.iter().fold(
-            (0, Vec::new()),
-            |(damaged, mut acc), current| match current {
-                Status::Operational => {
-                    if damaged > 0 {
-                        acc.push(damaged);
+                    if ch == '?' {
+                        result += solve_recur(springs, groups.clone(), cache, i + 1);
                     }
-                    (0, acc)
+
+                    cache.insert(cache_key, result);
+                    result
                 }
-                Status::Damaged => (damaged + 1, acc),
-                Status::Unknown => {
-                    panic!("Do not use this method with unknowns!");
-                }
-            },
-        );
-
-        if damaged > 0 {
-            acc.push(damaged);
-        }
-
-        acc
-    }
-}
-
-struct Input {
-    statuses: Vec<Status>,
-    counts: Vec<u64>,
-}
-
-fn statuses_match_counts(statuses: &[Status], counts: &[u64]) -> bool {
-    Status::to_counts(statuses).as_slice() == counts
-}
-
-impl Input {
-    fn parse(line: &str) -> Self {
-        let (statuses, counts) = line.split_once(' ').unwrap();
-
-        Self {
-            statuses: statuses.chars().map(Status::parse).collect::<Vec<_>>(),
-            counts: counts
-                .split(',')
-                .map(|x| x.parse::<u64>().unwrap())
-                .collect::<Vec<_>>(),
+            } else {
+                0
+            }
         }
     }
 
-    fn unknowns_count(&self) -> u32 {
-        self.statuses
-            .iter()
-            .filter(|x| **x == Status::Unknown)
-            .count() as u32
-    }
-
-    fn is_valid_permutation(&self, permutation: u64) -> bool {
-        let new_statuses = Status::apply(&self.statuses, permutation);
-        statuses_match_counts(&new_statuses, &self.counts)
-    }
+    solve_recur(&input.0, input.1, &mut HashMap::new(), 0)
 }
 
-fn solve_p1(input: Input) -> u64 {
-    let unknowns_count = input.unknowns_count();
-
-    if unknowns_count == 0 {
-        1
-    } else {
-        (0..2_u64.pow(unknowns_count))
-            .filter(|permutation| input.is_valid_permutation(*permutation))
-            .count() as u64
-    }
+fn unfold(input: (String, Vec<u64>)) -> (String, Vec<u64>) {
+    (
+        [input.0.clone()]
+            .into_iter()
+            .cycle()
+            .take(4)
+            .map(|mut x| {
+                x.push('?');
+                x
+            })
+            .chain([input.0])
+            .collect(),
+        [input.1].into_iter().cycle().take(5).flatten().collect(),
+    )
 }
 
 fn p1(input: &str) -> String {
     input
         .trim()
         .lines()
-        .map(Input::parse)
-        .map(solve_p1)
+        .map(parse)
+        .map(solve)
         .sum::<u64>()
         .to_string()
 }
 
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    input
+        .trim()
+        .lines()
+        .map(parse)
+        .map(unfold)
+        .map(solve)
+        .sum::<u64>()
+        .to_string()
 }
 
 fn main() {
@@ -149,6 +158,12 @@ mod tests {
 ";
 
     #[test]
+    fn test_reddit_example() {
+        assert_eq!(solve(("??#???#?????.?".to_string(), vec![1, 1, 5])), 12);
+        assert_eq!(solve(("????????#???".to_string(), vec![3, 2])), 15);
+    }
+
+    #[test]
     fn test_p1_sample() {
         assert_eq!(p1(SAMPLE_INPUT), "21");
     }
@@ -160,12 +175,11 @@ mod tests {
 
     #[test]
     fn test_p2_sample() {
-        assert_eq!(p2(SAMPLE_INPUT), "");
+        assert_eq!(p2(SAMPLE_INPUT), "525152");
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "620189727003627");
     }
 }
