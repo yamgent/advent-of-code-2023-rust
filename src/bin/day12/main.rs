@@ -103,16 +103,12 @@ fn solve(input: (String, Vec<usize>)) -> usize {
 
 fn unfold(input: (String, Vec<usize>)) -> (String, Vec<usize>) {
     (
-        [input.0.clone()]
+        [input.0]
             .into_iter()
             .cycle()
-            .take(4)
-            .map(|mut x| {
-                x.push('?');
-                x
-            })
-            .chain([input.0])
-            .collect(),
+            .take(5)
+            .collect::<Vec<_>>()
+            .join("?"),
         [input.1].into_iter().cycle().take(5).flatten().collect(),
     )
 }
