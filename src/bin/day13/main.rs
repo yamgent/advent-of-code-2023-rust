@@ -10,6 +10,59 @@ fn reflect_y(rock: &(i64, i64), y_line: i64) -> (i64, i64) {
     (rock.0, 2 * y_line - rock.1 + 1)
 }
 
+fn find_reflection_line(
+    rocks: &HashSet<(i64, i64)>,
+    width: i64,
+    height: i64,
+    skip: Option<u64>,
+) -> Option<u64> {
+    const NO_SKIP: u64 = 999_999;
+    let x_skip = match skip {
+        Some(val) => {
+            if val < 100 {
+                val
+            } else {
+                NO_SKIP
+            }
+        }
+        None => NO_SKIP,
+    } as i64;
+    let y_skip = match skip {
+        Some(val) => {
+            if val >= 100 {
+                val / 100
+            } else {
+                NO_SKIP
+            }
+        }
+        None => NO_SKIP,
+    } as i64;
+
+    (0..(width - 1))
+        .into_iter()
+        .filter(|x| *x != x_skip - 1)
+        .find(|x| {
+            rocks.iter().all(|rock| {
+                let reflect = reflect_x(rock, *x);
+                reflect.0 < 0 || reflect.0 >= width || rocks.contains(&reflect)
+            })
+        })
+        .map(|x| x + 1)
+        .or_else(|| {
+            (0..(height - 1))
+                .into_iter()
+                .filter(|y| *y != y_skip - 1)
+                .find(|y| {
+                    rocks.iter().all(|rock| {
+                        let reflect = reflect_y(rock, *y);
+                        reflect.1 < 0 || reflect.1 >= height || rocks.contains(&reflect)
+                    })
+                })
+                .map(|y| ((y + 1) * 100))
+        })
+        .map(|v| v as u64)
+}
+
 fn solve_p1(pattern: &str) -> u64 {
     let height = pattern.lines().count() as i64;
     let width = pattern.lines().next().unwrap().chars().count() as i64;
@@ -23,27 +76,47 @@ fn solve_p1(pattern: &str) -> u64 {
                 .collect::<Vec<(i64, i64)>>()
         }));
 
-    (0..(width - 1))
+    find_reflection_line(&rocks, width, height, None).unwrap()
+}
+
+fn solve_p2(pattern: &str) -> u64 {
+    let height = pattern.lines().count() as i64;
+    let width = pattern.lines().next().unwrap().chars().count() as i64;
+
+    let mut rocks: HashSet<(i64, i64)> =
+        HashSet::from_iter(pattern.lines().enumerate().flat_map(|(y, line)| {
+            line.chars()
+                .enumerate()
+                .filter(|(_, ch)| *ch == '#')
+                .map(|(x, _)| (x as i64, y as i64))
+                .collect::<Vec<(i64, i64)>>()
+        }));
+
+    let old_reflection_line = find_reflection_line(&rocks, width, height, None).unwrap();
+
+    (0..width)
         .into_iter()
-        .find(|x| {
-            rocks.iter().all(|rock| {
-                let reflect = reflect_x(rock, *x);
-                reflect.0 < 0 || reflect.0 >= width || rocks.contains(&reflect)
-            })
+        .flat_map(|x| (0..height).into_iter().map(move |y| (x, y)))
+        .find_map(|coord| {
+            let exist = rocks.contains(&coord);
+
+            if exist {
+                rocks.remove(&coord);
+            } else {
+                rocks.insert(coord);
+            }
+
+            let result = find_reflection_line(&rocks, width, height, Some(old_reflection_line));
+
+            if exist {
+                rocks.insert(coord);
+            } else {
+                rocks.remove(&coord);
+            }
+
+            result
         })
-        .map(|x| x + 1)
-        .unwrap_or_else(|| {
-            (0..(height - 1))
-                .into_iter()
-                .find(|y| {
-                    rocks.iter().all(|rock| {
-                        let reflect = reflect_y(rock, *y);
-                        reflect.1 < 0 || reflect.1 >= height || rocks.contains(&reflect)
-                    })
-                })
-                .map(|y| (y + 1) * 100)
-                .unwrap()
-        }) as u64
+        .unwrap()
 }
 
 fn p1(input: &str) -> String {
@@ -56,8 +129,12 @@ fn p1(input: &str) -> String {
 }
 
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    input
+        .trim()
+        .split("\n\n")
+        .map(|line| solve_p2(line.trim()))
+        .sum::<u64>()
+        .to_string()
 }
 
 fn main() {
@@ -145,12 +222,11 @@ mod tests {
 
     #[test]
     fn test_p2_sample() {
-        assert_eq!(p2(SAMPLE_INPUT), "");
+        assert_eq!(p2(SAMPLE_INPUT), "400");
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "23479");
     }
 }
