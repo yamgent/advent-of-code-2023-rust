@@ -2,14 +2,13 @@ use std::collections::HashMap;
 
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/12/input.txt");
 
-fn parse(input: &str) -> (String, Vec<u64>) {
+fn parse(input: &str) -> (String, Vec<usize>) {
     let (springs, count) = input.trim().split_once(' ').unwrap();
     let springs = springs.trim().to_string();
     let count = count
         .trim()
         .split(',')
-        .map(|x| x.parse::<u64>().unwrap())
-        .rev()
+        .map(|x| x.parse::<usize>().unwrap())
         .collect::<Vec<_>>();
     (springs, count)
 }
@@ -36,13 +35,13 @@ solve(springs, groups, cache, i):
     add the result to the cache
     return result
 */
-fn solve(input: (String, Vec<u64>)) -> u64 {
+fn solve(input: (String, Vec<usize>)) -> usize {
     fn solve_recur(
         springs: &String,
-        groups: Vec<u64>,
-        cache: &mut HashMap<(usize, usize), u64>,
+        groups: Vec<usize>,
+        cache: &mut HashMap<(usize, usize), usize>,
         i: usize,
-    ) -> u64 {
+    ) -> usize {
         if groups.is_empty() {
             if springs.chars().skip(i).any(|ch| ch == '#') {
                 0
@@ -64,25 +63,25 @@ fn solve(input: (String, Vec<u64>)) -> u64 {
                 } else {
                     let mut result = 0;
 
-                    let first_group_size = groups.iter().last().unwrap();
+                    let first_group_size = groups.first().unwrap();
 
-                    if (i + (*first_group_size as usize) <= springs.len())
+                    if (i + *first_group_size <= springs.len())
                         && springs
                             .chars()
                             .skip(i)
-                            .take(*first_group_size as usize)
+                            .take(*first_group_size)
                             .all(|ch| ch == '?' || ch == '#')
                         && springs
                             .chars()
-                            .nth(i + *first_group_size as usize)
+                            .nth(i + *first_group_size)
                             .map(|ch| ch != '#')
                             .unwrap_or(true)
                     {
                         result += solve_recur(
                             springs,
-                            groups.iter().take(groups.len() - 1).copied().collect(),
+                            groups.iter().skip(1).copied().collect(),
                             cache,
-                            i + *first_group_size as usize + 1,
+                            i + *first_group_size + 1,
                         );
                     }
 
@@ -102,7 +101,7 @@ fn solve(input: (String, Vec<u64>)) -> u64 {
     solve_recur(&input.0, input.1, &mut HashMap::new(), 0)
 }
 
-fn unfold(input: (String, Vec<u64>)) -> (String, Vec<u64>) {
+fn unfold(input: (String, Vec<usize>)) -> (String, Vec<usize>) {
     (
         [input.0.clone()]
             .into_iter()
@@ -124,7 +123,7 @@ fn p1(input: &str) -> String {
         .lines()
         .map(parse)
         .map(solve)
-        .sum::<u64>()
+        .sum::<usize>()
         .to_string()
 }
 
@@ -135,7 +134,7 @@ fn p2(input: &str) -> String {
         .map(parse)
         .map(unfold)
         .map(solve)
-        .sum::<u64>()
+        .sum::<usize>()
         .to_string()
 }
 
@@ -159,8 +158,8 @@ mod tests {
 
     #[test]
     fn test_reddit_example() {
-        assert_eq!(solve(("??#???#?????.?".to_string(), vec![1, 1, 5])), 12);
-        assert_eq!(solve(("????????#???".to_string(), vec![3, 2])), 15);
+        assert_eq!(solve(("??#???#?????.?".to_string(), vec![5, 1, 1])), 12);
+        assert_eq!(solve(("????????#???".to_string(), vec![2, 3])), 15);
     }
 
     #[test]
