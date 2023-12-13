@@ -38,11 +38,12 @@ solve(springs, groups, cache, i):
 fn solve(input: (String, Vec<usize>)) -> usize {
     fn solve_recur(
         springs: &String,
-        groups: Vec<usize>,
+        groups: &Vec<usize>,
         cache: &mut HashMap<(usize, usize), usize>,
         i: usize,
+        i_group: usize,
     ) -> usize {
-        if groups.is_empty() {
+        if i_group >= groups.len() {
             if springs.chars().skip(i).any(|ch| ch == '#') {
                 0
             } else {
@@ -56,14 +57,14 @@ fn solve(input: (String, Vec<usize>)) -> usize {
                 .find(|(_, ch)| *ch == '?' || *ch == '#');
 
             if let Some((i, ch)) = next {
-                let cache_key = (i, groups.len());
+                let cache_key = (i, groups.len() - i_group);
 
                 if cache.contains_key(&cache_key) {
                     *cache.get(&cache_key).unwrap()
                 } else {
                     let mut result = 0;
 
-                    let first_group_size = groups.first().unwrap();
+                    let first_group_size = groups.iter().nth(i_group).unwrap();
 
                     if (i + *first_group_size <= springs.len())
                         && springs
@@ -79,14 +80,15 @@ fn solve(input: (String, Vec<usize>)) -> usize {
                     {
                         result += solve_recur(
                             springs,
-                            groups.iter().skip(1).copied().collect(),
+                            groups,
                             cache,
                             i + *first_group_size + 1,
+                            i_group + 1,
                         );
                     }
 
                     if ch == '?' {
-                        result += solve_recur(springs, groups.clone(), cache, i + 1);
+                        result += solve_recur(springs, groups, cache, i + 1, i_group);
                     }
 
                     cache.insert(cache_key, result);
@@ -98,7 +100,7 @@ fn solve(input: (String, Vec<usize>)) -> usize {
         }
     }
 
-    solve_recur(&input.0, input.1, &mut HashMap::new(), 0)
+    solve_recur(&input.0, &input.1, &mut HashMap::new(), 0, 0)
 }
 
 fn unfold(input: (String, Vec<usize>)) -> (String, Vec<usize>) {
