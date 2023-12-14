@@ -117,7 +117,7 @@ fn roll_one_cycle(world: &mut World) {
     roll_rocks_east(world);
 }
 
-fn print_world(world: &World) -> String {
+fn world_to_string(world: &World) -> String {
     world.iter().fold(String::new(), |mut acc, row| {
         row.iter().for_each(|space| {
             acc.push(match space {
@@ -156,21 +156,22 @@ fn p2(input: &str) -> String {
 
     const TOTAL_CYCLES: usize = 1_000_000_000;
 
-    let mut cycle: usize = 0;
-    let cycle_start: usize = loop {
-        cycle += 1;
-        roll_one_cycle(&mut world);
+    let (cycle_stop, cycle_start) = (1..TOTAL_CYCLES)
+        .find_map(|current_cycle| {
+            roll_one_cycle(&mut world);
 
-        let current_world = print_world(&world);
+            let current_world = world_to_string(&world);
 
-        if seen.contains_key(&current_world) {
-            break *seen.get(&current_world).unwrap();
-        } else {
-            seen.insert(current_world, cycle);
-        }
-    };
+            let previous_cycle = *seen.entry(current_world).or_insert(current_cycle);
+            if previous_cycle != current_cycle {
+                Some((current_cycle, previous_cycle))
+            } else {
+                None
+            }
+        })
+        .unwrap();
 
-    let rem = (TOTAL_CYCLES - cycle_start) % (cycle - cycle_start);
+    let rem = (TOTAL_CYCLES - cycle_start) % (cycle_stop - cycle_start);
 
     (0..rem).for_each(|_| {
         roll_one_cycle(&mut world);
@@ -217,7 +218,7 @@ O.#..O.#.#
 
         roll_one_cycle(&mut world);
         assert_eq!(
-            print_world(&world).trim(),
+            world_to_string(&world).trim(),
             r"
 .....#....
 ....#...O#
@@ -235,7 +236,7 @@ O.#..O.#.#
 
         roll_one_cycle(&mut world);
         assert_eq!(
-            print_world(&world).trim(),
+            world_to_string(&world).trim(),
             r"
 .....#....
 ....#...O#
@@ -253,7 +254,7 @@ O.#..O.#.#
 
         roll_one_cycle(&mut world);
         assert_eq!(
-            print_world(&world).trim(),
+            world_to_string(&world).trim(),
             r"
 .....#....
 ....#...O#
