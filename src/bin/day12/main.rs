@@ -64,7 +64,7 @@ fn solve(input: (String, Vec<usize>)) -> usize {
                 } else {
                     let mut result = 0;
 
-                    let first_group_size = groups.iter().nth(i_group).unwrap();
+                    let first_group_size = groups.get(i_group).unwrap();
 
                     if (i + *first_group_size <= springs.len())
                         && springs
