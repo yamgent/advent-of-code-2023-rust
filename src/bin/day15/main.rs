@@ -1,17 +1,16 @@
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/15/input.txt");
 
+fn hash(text: &str) -> u8 {
+    text.chars()
+        .fold(0u8, |acc, ch| acc.wrapping_add(ch as u8).wrapping_mul(17))
+}
+
 fn p1(input: &str) -> String {
     input
         .trim()
         .split(',')
-        .map(|text| {
-            text.chars().fold(0u64, |mut acc, ch| {
-                acc += ch as u64;
-                acc *= 17;
-                acc %= 256;
-                acc
-            })
-        })
+        .map(hash)
+        .map(|val| val as u64)
         .sum::<u64>()
         .to_string()
 }
