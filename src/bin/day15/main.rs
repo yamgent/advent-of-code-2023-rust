@@ -139,15 +139,15 @@ impl BoxContentCollection {
         let box_number = hash(label);
         self.boxes
             .entry(box_number)
-            .or_insert_with(|| BoxContent::new())
+            .or_insert_with(BoxContent::new)
             .remove(label.to_string());
     }
 
     fn set(&mut self, label: &str, focal_length: i32) {
-        let box_number = hash(&label);
+        let box_number = hash(label);
         self.boxes
             .entry(box_number)
-            .or_insert_with(|| BoxContent::new())
+            .or_insert_with(BoxContent::new)
             .set(label.to_string(), focal_length);
     }
 
