@@ -1,9 +1,24 @@
 use std::{
     cmp::Reverse,
-    collections::{BinaryHeap, HashSet},
+    collections::{BinaryHeap, HashMap},
 };
 
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/17/input.txt");
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ProblemPart {
+    Part1,
+    Part2,
+}
+
+impl ProblemPart {
+    fn max_move(&self) -> usize {
+        match self {
+            ProblemPart::Part1 => 3,
+            ProblemPart::Part2 => 10,
+        }
+    }
+}
 
 type Pos = (i32, i32);
 
@@ -43,7 +58,7 @@ struct VirtualNode {
 }
 
 impl VirtualNode {
-    fn advance(&self, direction: Direction, bounds: &(usize, usize)) -> Option<Self> {
+    fn advance_p1(&self, direction: Direction, bounds: &(usize, usize)) -> Option<Self> {
         if self.moves_left == 0 && self.moves_left_direction == direction {
             None
         } else if self.moves_left_direction.opposite() == direction {
@@ -57,13 +72,53 @@ impl VirtualNode {
                     moves_left: if self.moves_left_direction == direction {
                         self.moves_left - 1
                     } else {
-                        2
+                        ProblemPart::Part1.max_move() - 1
                     },
                     moves_left_direction: direction,
                 })
             } else {
                 None
             }
+        }
+    }
+
+    fn advance_p2(&self, direction: Direction, bounds: &(usize, usize)) -> Option<Self> {
+        if self.moves_left == 0 && self.moves_left_direction == direction {
+            None
+        } else if self.moves_left_direction.opposite() == direction {
+            None
+        } else if self.moves_left > ProblemPart::Part2.max_move() - 4
+            && self.moves_left_direction != direction
+        {
+            None
+        } else {
+            let pos = advance(&self.pos, direction);
+
+            if pos.0 >= 0 && pos.0 < bounds.0 as i32 && pos.1 >= 0 && pos.1 < bounds.1 as i32 {
+                Some(VirtualNode {
+                    pos,
+                    moves_left: if self.moves_left_direction == direction {
+                        self.moves_left - 1
+                    } else {
+                        ProblemPart::Part2.max_move() - 1
+                    },
+                    moves_left_direction: direction,
+                })
+            } else {
+                None
+            }
+        }
+    }
+
+    fn advance(
+        &self,
+        direction: Direction,
+        bounds: &(usize, usize),
+        problem: ProblemPart,
+    ) -> Option<Self> {
+        match problem {
+            ProblemPart::Part1 => self.advance_p1(direction, bounds),
+            ProblemPart::Part2 => self.advance_p2(direction, bounds),
         }
     }
 }
@@ -88,7 +143,7 @@ impl Map {
         self.map[pos.1 as usize][pos.0 as usize]
     }
 
-    fn get_neighbours(&self, node: &VirtualNode) -> Vec<VirtualNode> {
+    fn get_neighbours(&self, node: &VirtualNode, problem: ProblemPart) -> Vec<VirtualNode> {
         let bounds = (self.map[0].len(), self.map.len());
         [
             Direction::Up,
@@ -97,7 +152,7 @@ impl Map {
             Direction::Right,
         ]
         .into_iter()
-        .flat_map(|dir| node.advance(dir, &bounds))
+        .flat_map(|dir| node.advance(dir, &bounds, problem))
         .collect()
     }
 }
@@ -106,59 +161,73 @@ impl Map {
 struct DijkstraQueue {
     weight: Reverse<u32>,
     node: VirtualNode,
+    prev: VirtualNode,
 }
 
-fn p1(input: &str) -> String {
+fn trace(node: &VirtualNode, visited: &HashMap<VirtualNode, VirtualNode>) {
+    let mut current = Some(node);
+    while let Some(next) = current {
+        dbg!(next);
+        current = visited.get(&next);
+    }
+}
+
+fn solve(input: &str, problem: ProblemPart) -> String {
     let map = Map::parse_input(input);
 
-    let mut queue = BinaryHeap::from_iter([
-        DijkstraQueue {
-            weight: Reverse(map.get_heat_loss((0, 1))),
-            node: VirtualNode {
-                pos: (0, 1),
-                moves_left: 2,
-                moves_left_direction: Direction::Down,
-            },
+    let mut queue = BinaryHeap::from_iter([DijkstraQueue {
+        weight: Reverse(0),
+        node: VirtualNode {
+            pos: (0, 0),
+            moves_left: problem.max_move(),
+            moves_left_direction: Direction::Right,
         },
-        DijkstraQueue {
-            weight: Reverse(map.get_heat_loss((1, 0))),
-            node: VirtualNode {
-                pos: (1, 0),
-                moves_left: 2,
-                moves_left_direction: Direction::Right,
-            },
+        prev: VirtualNode {
+            pos: (9999, 9999),
+            moves_left: problem.max_move(),
+            moves_left_direction: Direction::Right,
         },
-    ]);
+    }]);
 
-    let mut visited: HashSet<VirtualNode> = HashSet::new();
+    let mut visited: HashMap<VirtualNode, VirtualNode> = HashMap::new();
 
     while let Some(next) = queue.pop() {
+        if visited.contains_key(&next.node) {
+            continue;
+        }
+        visited.insert(next.node, next.prev);
+
         let pos = next.node.pos;
-        if pos.0 == map.map[0].len() as i32 - 1 && pos.1 == map.map.len() as i32 - 1 {
+        if pos.0 == map.map[0].len() as i32 - 1
+            && pos.1 == map.map.len() as i32 - 1
+            && (problem != ProblemPart::Part2 || next.node.moves_left <= problem.max_move() - 4)
+        {
+            trace(&next.node, &visited);
             return next.weight.0.to_string();
         }
 
-        map.get_neighbours(&next.node)
+        map.get_neighbours(&next.node, problem)
             .into_iter()
-            .filter(|node| !visited.contains(&node))
             .map(|node| DijkstraQueue {
                 weight: Reverse(next.weight.0 + map.get_heat_loss(node.pos)),
                 node,
+                prev: next.node,
             })
             .collect::<Vec<_>>()
             .into_iter()
             .for_each(|queue_node| {
-                visited.insert(queue_node.node);
                 queue.push(queue_node);
             });
     }
 
     unreachable!()
 }
+fn p1(input: &str) -> String {
+    solve(input, ProblemPart::Part1)
+}
 
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    solve(input, ProblemPart::Part2)
 }
 
 fn main() {
@@ -196,14 +265,22 @@ mod tests {
         assert_eq!(p1(ACTUAL_INPUT), "1263");
     }
 
+    const SAMPLE_INPUT_2: &str = r"
+111111111111
+999999999991
+999999999991
+999999999991
+999999999991
+";
+
     #[test]
     fn test_p2_sample() {
-        assert_eq!(p2(SAMPLE_INPUT), "");
+        assert_eq!(p2(SAMPLE_INPUT), "94");
+        assert_eq!(p2(SAMPLE_INPUT_2), "71");
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "1411");
     }
 }
