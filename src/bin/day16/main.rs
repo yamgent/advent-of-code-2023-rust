@@ -93,6 +93,7 @@ impl Ray {
     }
 }
 
+#[allow(dead_code)]
 fn energized_to_string(energized: &HashSet<(i32, i32)>, map: &[Vec<char>]) -> String {
     let mut result = String::new();
 
@@ -117,11 +118,11 @@ fn get_energized_count(map: &[Vec<char>], start_ray: Ray) -> usize {
     while !rays.is_empty() {
         rays = rays
             .iter()
-            .flat_map(|ray| ray.move_ray(&map))
+            .flat_map(|ray| ray.move_ray(map))
             .filter(|ray| !visited.contains(ray))
             .collect();
         rays.iter().for_each(|ray| {
-            visited.insert(ray.clone());
+            visited.insert(*ray);
         });
     }
 
