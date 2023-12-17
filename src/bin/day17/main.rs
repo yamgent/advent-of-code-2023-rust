@@ -71,30 +71,28 @@ impl VirtualNode {
         bounds: &(usize, usize),
         problem: ProblemPart,
     ) -> Option<Self> {
-        if self.moves_left == 0 && self.moves_left_direction == direction {
-            None
-        } else if self.moves_left_direction.opposite() == direction {
-            None
-        } else if self.moves_left > problem.max_straight_moves() - problem.min_straight_moves()
-            && self.moves_left_direction != direction
+        let pos = advance(&self.pos, direction);
+
+        if (self.moves_left == 0 && self.moves_left_direction == direction)
+            || self.moves_left_direction.opposite() == direction
+            || (self.moves_left > problem.max_straight_moves() - problem.min_straight_moves()
+                && self.moves_left_direction != direction)
+            || pos.0 < 0
+            || pos.0 >= bounds.0 as i32
+            || pos.1 < 0
+            || pos.1 >= bounds.1 as i32
         {
             None
         } else {
-            let pos = advance(&self.pos, direction);
-
-            if pos.0 >= 0 && pos.0 < bounds.0 as i32 && pos.1 >= 0 && pos.1 < bounds.1 as i32 {
-                Some(VirtualNode {
-                    pos,
-                    moves_left: if self.moves_left_direction == direction {
-                        self.moves_left - 1
-                    } else {
-                        problem.max_straight_moves() - 1
-                    },
-                    moves_left_direction: direction,
-                })
-            } else {
-                None
-            }
+            Some(VirtualNode {
+                pos,
+                moves_left: if self.moves_left_direction == direction {
+                    self.moves_left - 1
+                } else {
+                    problem.max_straight_moves() - 1
+                },
+                moves_left_direction: direction,
+            })
         }
     }
 }
@@ -144,7 +142,7 @@ fn trace(node: &VirtualNode, visited: &HashMap<VirtualNode, VirtualNode>) {
     let mut current = Some(node);
     while let Some(next) = current {
         dbg!(next);
-        current = visited.get(&next);
+        current = visited.get(next);
     }
 }
 
