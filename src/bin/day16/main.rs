@@ -110,17 +110,8 @@ fn energized_to_string(energized: &HashSet<(i32, i32)>, map: &[Vec<char>]) -> St
     result
 }
 
-fn p1(input: &str) -> String {
-    let map = input
-        .trim()
-        .lines()
-        .map(|line| line.chars().collect::<Vec<_>>())
-        .collect::<Vec<_>>();
-
-    let mut rays = vec![Ray {
-        pos: (0, 0),
-        direction: Direction::Right,
-    }];
+fn get_energized_count(map: &[Vec<char>], start_ray: Ray) -> usize {
+    let mut rays = vec![start_ray];
     let mut visited: HashSet<Ray> = HashSet::from_iter(rays.iter().copied());
 
     while !rays.is_empty() {
@@ -134,14 +125,60 @@ fn p1(input: &str) -> String {
         });
     }
 
-    HashSet::<(i32, i32)>::from_iter(visited.iter().map(|ray| ray.pos))
-        .len()
-        .to_string()
+    HashSet::<(i32, i32)>::from_iter(visited.iter().map(|ray| ray.pos)).len()
+}
+
+fn parse_map(input: &str) -> Vec<Vec<char>> {
+    input
+        .trim()
+        .lines()
+        .map(|line| line.chars().collect::<Vec<_>>())
+        .collect()
+}
+
+fn p1(input: &str) -> String {
+    get_energized_count(
+        &parse_map(input),
+        Ray {
+            pos: (0, 0),
+            direction: Direction::Right,
+        },
+    )
+    .to_string()
 }
 
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    let map = parse_map(input);
+
+    (0..map[0].len())
+        .flat_map(|x| {
+            vec![
+                Ray {
+                    pos: (x as i32, 0),
+                    direction: Direction::Down,
+                },
+                Ray {
+                    pos: (x as i32, map.len() as i32 - 1),
+                    direction: Direction::Up,
+                },
+            ]
+        })
+        .chain((0..map.len()).flat_map(|y| {
+            vec![
+                Ray {
+                    pos: (0, y as i32),
+                    direction: Direction::Right,
+                },
+                Ray {
+                    pos: (map[0].len() as i32 - 1, y as i32),
+                    direction: Direction::Left,
+                },
+            ]
+        }))
+        .map(|ray| get_energized_count(&map, ray))
+        .max()
+        .unwrap()
+        .to_string()
 }
 
 fn main() {
@@ -178,12 +215,11 @@ mod tests {
 
     #[test]
     fn test_p2_sample() {
-        assert_eq!(p2(SAMPLE_INPUT), "");
+        assert_eq!(p2(SAMPLE_INPUT), "51");
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "8221");
     }
 }
