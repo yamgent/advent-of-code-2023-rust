@@ -1,5 +1,3 @@
-use std::collections::{HashSet, VecDeque};
-
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/18/input.txt");
 
 #[derive(Debug, Clone, Copy)]
@@ -57,7 +55,7 @@ impl Input {
                 Self { dir, steps }
             }
             ProblemPart::Part2 => {
-                let color = iter.nth(2).unwrap().replace("(", "").replace(")", "");
+                let color = iter.nth(2).unwrap().replace(['(', ')'], "");
 
                 let dir = Direction::parse_direction(color.chars().last().unwrap(), problem_part);
                 let steps =
@@ -93,7 +91,6 @@ fn solve(input: &str, problem_part: ProblemPart) -> String {
             acc
         })
         .windows(2)
-        .into_iter()
         .map(|points| points[0].0 * points[1].1 - points[1].0 * points[0].1)
         .sum::<i64>()
         // reddit says use both shoelace formula & pick's theorem. Above was
