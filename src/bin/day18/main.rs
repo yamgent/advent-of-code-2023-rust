@@ -2,6 +2,12 @@ use std::collections::{HashSet, VecDeque};
 
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/18/input.txt");
 
+#[derive(Debug, Clone, Copy)]
+enum ProblemPart {
+    Part1,
+    Part2,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Direction {
     Up,
@@ -11,13 +17,22 @@ enum Direction {
 }
 
 impl Direction {
-    fn parse_direction(ch: char) -> Self {
-        match ch {
-            'U' => Direction::Up,
-            'D' => Direction::Down,
-            'L' => Direction::Left,
-            'R' => Direction::Right,
-            _ => unreachable!(),
+    fn parse_direction(ch: char, problem_part: ProblemPart) -> Self {
+        match problem_part {
+            ProblemPart::Part1 => match ch {
+                'U' => Direction::Up,
+                'D' => Direction::Down,
+                'L' => Direction::Left,
+                'R' => Direction::Right,
+                _ => unreachable!(),
+            },
+            ProblemPart::Part2 => match ch {
+                '0' => Direction::Right,
+                '1' => Direction::Down,
+                '2' => Direction::Left,
+                '3' => Direction::Up,
+                _ => unreachable!(),
+            },
         }
     }
 }
@@ -25,82 +40,77 @@ impl Direction {
 #[derive(Debug, Clone)]
 struct Input {
     dir: Direction,
-    steps: i32,
-    color: String,
+    steps: i64,
 }
 
 impl Input {
-    fn parse_input(line: &str) -> Self {
+    fn parse_input(line: &str, problem_part: ProblemPart) -> Self {
         let mut iter = line.split(' ');
 
-        let dir = Direction::parse_direction(iter.next().unwrap().chars().next().unwrap());
-        let steps = iter.next().unwrap().parse().unwrap();
-        let color = iter.next().unwrap().replace("(", "").replace(")", "");
+        match problem_part {
+            ProblemPart::Part1 => {
+                let dir = Direction::parse_direction(
+                    iter.next().unwrap().chars().next().unwrap(),
+                    problem_part,
+                );
+                let steps = iter.next().unwrap().parse().unwrap();
+                Self { dir, steps }
+            }
+            ProblemPart::Part2 => {
+                let color = iter.nth(2).unwrap().replace("(", "").replace(")", "");
 
-        Self { dir, steps, color }
+                let dir = Direction::parse_direction(color.chars().last().unwrap(), problem_part);
+                let steps =
+                    i64::from_str_radix(&color.chars().skip(1).take(5).collect::<String>(), 16)
+                        .unwrap();
+
+                Self { dir, steps }
+            }
+        }
     }
 }
 
-#[allow(dead_code)]
-fn dug_to_string(dug: &HashSet<(i32, i32)>, min: &(i32, i32), max: &(i32, i32)) -> String {
-    (min.1..=max.1).fold(String::new(), |mut acc, y| {
-        (min.0..=max.0).for_each(|x| {
-            acc.push(if dug.contains(&(x, y)) { '#' } else { '.' });
-        });
-        acc.push('\n');
-        acc
-    })
+fn solve(input: &str, problem_part: ProblemPart) -> String {
+    let input = input
+        .trim()
+        .lines()
+        .map(|line| Input::parse_input(line, problem_part))
+        .collect::<Vec<_>>();
+
+    let area = input
+        .iter()
+        .fold(vec![(0, 0)], |mut acc, current| {
+            let pos = acc.last().unwrap();
+
+            let new_pos = match current.dir {
+                Direction::Up => (pos.0, pos.1 - current.steps),
+                Direction::Down => (pos.0, pos.1 + current.steps),
+                Direction::Left => (pos.0 - current.steps, pos.1),
+                Direction::Right => (pos.0 + current.steps, pos.1),
+            };
+
+            acc.push(new_pos);
+            acc
+        })
+        .windows(2)
+        .into_iter()
+        .map(|points| points[0].0 * points[1].1 - points[1].0 * points[0].1)
+        .sum::<i64>()
+        // reddit says use both shoelace formula & pick's theorem. Above was
+        // shoelace, below is part of the pick's theorem
+        + input.iter().map(|x| x.steps).sum::<i64>()
+        + 2;
+
+    // impossible for final area to end with 0.5. There is no 0.5 hex area.
+    (area / 2).to_string()
 }
 
 fn p1(input: &str) -> String {
-    let (_, dug, min, max) = input.trim().lines().map(Input::parse_input).fold(
-        ((0, 0), HashSet::<(i32, i32)>::new(), (-1, -1), (1, 1)),
-        |(mut pos, mut dug, mut min, mut max), current| {
-            (0..current.steps).for_each(|_| {
-                pos = match current.dir {
-                    Direction::Up => (pos.0, pos.1 - 1),
-                    Direction::Down => (pos.0, pos.1 + 1),
-                    Direction::Left => (pos.0 - 1, pos.1),
-                    Direction::Right => (pos.0 + 1, pos.1),
-                };
-                dug.insert(pos);
-                min = (min.0.min(pos.0 - 1), min.1.min(pos.1 - 1));
-                max = (max.0.max(pos.0 + 1), max.1.max(pos.1 + 1));
-            });
-
-            (pos, dug, min, max)
-        },
-    );
-
-    fn in_bounds(pos: &(i32, i32), min: &(i32, i32), max: &(i32, i32)) -> bool {
-        pos.0 >= min.0 && pos.1 >= min.1 && pos.0 <= max.0 && pos.1 <= max.1
-    }
-
-    let mut outside = HashSet::<(i32, i32)>::new();
-    let mut queue = VecDeque::from_iter([min]);
-
-    while let Some(next) = queue.pop_front() {
-        if !in_bounds(&next, &min, &max) || outside.contains(&next) || dug.contains(&next) {
-            continue;
-        }
-
-        outside.insert(next);
-        queue.push_back((next.0 - 1, next.1));
-        queue.push_back((next.0 + 1, next.1));
-        queue.push_back((next.0, next.1 - 1));
-        queue.push_back((next.0, next.1 + 1));
-    }
-
-    (min.0..=max.0)
-        .flat_map(|x| (min.1..=max.1).map(move |y| (x, y)))
-        .filter(|coord| !outside.contains(coord))
-        .count()
-        .to_string()
+    solve(input, ProblemPart::Part1)
 }
 
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    solve(input, ProblemPart::Part2)
 }
 
 fn main() {
@@ -141,12 +151,11 @@ U 2 (#7a21e3)
 
     #[test]
     fn test_p2_sample() {
-        assert_eq!(p2(SAMPLE_INPUT), "");
+        assert_eq!(p2(SAMPLE_INPUT), "952408144115");
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "96556251590677");
     }
 }
