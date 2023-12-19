@@ -71,7 +71,7 @@ impl Workflow {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum WorkflowCmp {
     Gt,
     Lt,
@@ -90,6 +90,113 @@ struct WorkflowCond {
     cmp_rating: String,
     cmp: WorkflowCmp,
     cmp_value: u64,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Constraints {
+    x: (u64, u64),
+    m: (u64, u64),
+    a: (u64, u64),
+    s: (u64, u64),
+}
+
+const INVALID_CONSTRAINT: (u64, u64) = (99999, 99999);
+
+impl Constraints {
+    fn combos(&self) -> u64 {
+        if self.x == INVALID_CONSTRAINT
+            || self.m == INVALID_CONSTRAINT
+            || self.a == INVALID_CONSTRAINT
+            || self.s == INVALID_CONSTRAINT
+        {
+            0
+        } else {
+            (self.x.1 - self.x.0 + 1)
+                * (self.m.1 - self.m.0 + 1)
+                * (self.a.1 - self.a.0 + 1)
+                * (self.s.1 - self.s.0 + 1)
+        }
+    }
+}
+
+fn constraint(current: (u64, u64), cmp: WorkflowCmp, cmp_value: u64) -> (u64, u64) {
+    if current == INVALID_CONSTRAINT {
+        INVALID_CONSTRAINT
+    } else if cmp_value >= current.0 && cmp_value <= current.1 {
+        match cmp {
+            WorkflowCmp::Gt => {
+                if cmp_value + 1 > current.1 {
+                    INVALID_CONSTRAINT
+                } else {
+                    (cmp_value + 1, current.1)
+                }
+            }
+            WorkflowCmp::Lt => {
+                if cmp_value == 0 || cmp_value - 1 < current.0 {
+                    INVALID_CONSTRAINT
+                } else {
+                    (current.0, cmp_value - 1)
+                }
+            }
+        }
+    } else {
+        match cmp {
+            WorkflowCmp::Gt => {
+                if cmp_value > current.1 {
+                    INVALID_CONSTRAINT
+                } else {
+                    current
+                }
+            }
+            WorkflowCmp::Lt => {
+                if cmp_value < current.0 {
+                    INVALID_CONSTRAINT
+                } else {
+                    current
+                }
+            }
+        }
+    }
+}
+
+fn rev_constraint(current: (u64, u64), cmp: WorkflowCmp, cmp_value: u64) -> (u64, u64) {
+    if current == INVALID_CONSTRAINT {
+        INVALID_CONSTRAINT
+    } else if cmp_value >= current.0 && cmp_value <= current.1 {
+        match cmp {
+            WorkflowCmp::Lt => {
+                if cmp_value > current.1 {
+                    INVALID_CONSTRAINT
+                } else {
+                    (cmp_value, current.1)
+                }
+            }
+            WorkflowCmp::Gt => {
+                if cmp_value < current.0 {
+                    INVALID_CONSTRAINT
+                } else {
+                    (current.0, cmp_value)
+                }
+            }
+        }
+    } else {
+        match cmp {
+            WorkflowCmp::Lt => {
+                if cmp_value > current.1 {
+                    INVALID_CONSTRAINT
+                } else {
+                    current
+                }
+            }
+            WorkflowCmp::Gt => {
+                if cmp_value < current.0 {
+                    INVALID_CONSTRAINT
+                } else {
+                    current
+                }
+            }
+        }
+    }
 }
 
 impl WorkflowCond {
@@ -114,6 +221,64 @@ impl WorkflowCond {
             "s" => self.cmp.execute(rating.s, self.cmp_value),
             _ => unreachable!(),
         }
+    }
+
+    fn gen_true_constraints(&self, current_constraints: &Constraints) -> Constraints {
+        let result = match self.cmp_rating.as_str() {
+            "x" => Constraints {
+                x: constraint(current_constraints.x, self.cmp, self.cmp_value),
+                ..*current_constraints
+            },
+            "m" => Constraints {
+                m: constraint(current_constraints.m, self.cmp, self.cmp_value),
+                ..*current_constraints
+            },
+            "a" => Constraints {
+                a: constraint(current_constraints.a, self.cmp, self.cmp_value),
+                ..*current_constraints
+            },
+            "s" => Constraints {
+                s: constraint(current_constraints.s, self.cmp, self.cmp_value),
+                ..*current_constraints
+            },
+            _ => unreachable!(),
+        };
+
+        assert!(result.x.0 <= result.x.1);
+        assert!(result.m.0 <= result.m.1);
+        assert!(result.a.0 <= result.a.1);
+        assert!(result.s.0 <= result.s.1);
+
+        result
+    }
+
+    fn gen_false_constraints(&self, current_constraints: &Constraints) -> Constraints {
+        let result = match self.cmp_rating.as_str() {
+            "x" => Constraints {
+                x: rev_constraint(current_constraints.x, self.cmp, self.cmp_value),
+                ..*current_constraints
+            },
+            "m" => Constraints {
+                m: rev_constraint(current_constraints.m, self.cmp, self.cmp_value),
+                ..*current_constraints
+            },
+            "a" => Constraints {
+                a: rev_constraint(current_constraints.a, self.cmp, self.cmp_value),
+                ..*current_constraints
+            },
+            "s" => Constraints {
+                s: rev_constraint(current_constraints.s, self.cmp, self.cmp_value),
+                ..*current_constraints
+            },
+            _ => unreachable!(),
+        };
+
+        assert!(result.x.0 <= result.x.1);
+        assert!(result.m.0 <= result.m.1);
+        assert!(result.a.0 <= result.a.1);
+        assert!(result.s.0 <= result.s.1);
+
+        result
     }
 }
 
@@ -184,8 +349,60 @@ fn p1(input: &str) -> String {
 }
 
 fn p2(input: &str) -> String {
-    let _input = input.trim();
-    "".to_string()
+    let (workflows, _) = parse_input(input);
+
+    fn traverse(
+        workflows: &HashMap<String, Workflow>,
+        current: &str,
+        constraints: &mut Vec<Constraints>,
+    ) -> u64 {
+        if current == "R" {
+            0
+        } else if current == "A" {
+            constraints.last().unwrap().combos()
+        } else {
+            let workflow = workflows.get(current).unwrap();
+            let mut result = 0;
+
+            workflow.ifs.iter().for_each(|if_workflow| {
+                constraints.push(
+                    if_workflow
+                        .condition
+                        .gen_true_constraints(constraints.iter().last().unwrap()),
+                );
+
+                result += traverse(workflows, if_workflow.true_workflow.as_str(), constraints);
+
+                constraints.pop();
+
+                constraints.push(
+                    if_workflow
+                        .condition
+                        .gen_false_constraints(constraints.iter().last().unwrap()),
+                );
+            });
+
+            (0..workflow.ifs.len()).for_each(|_| {
+                constraints.pop();
+            });
+
+            result += traverse(workflows, workflow.else_workflow.as_str(), constraints);
+
+            result
+        }
+    }
+
+    traverse(
+        &workflows,
+        "in",
+        &mut vec![Constraints {
+            x: (1, 4000),
+            m: (1, 4000),
+            a: (1, 4000),
+            s: (1, 4000),
+        }],
+    )
+    .to_string()
 }
 
 fn main() {
@@ -229,7 +446,7 @@ hdj{m>838:A,pv}
 
     #[test]
     fn test_p2_sample() {
-        assert_eq!(p2(SAMPLE_INPUT), "");
+        assert_eq!(p2(SAMPLE_INPUT), "167409079868000");
     }
 
     #[test]
