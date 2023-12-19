@@ -52,7 +52,7 @@ impl Workflow {
                 else_workflow: String::new(),
             },
             |mut acc, current| {
-                if current.contains(":") {
+                if current.contains(':') {
                     acc.ifs.push(WorkflowIf::parse(current));
                 } else {
                     acc.else_workflow = current.to_string();
@@ -86,31 +86,27 @@ impl WorkflowCmp {
 }
 
 #[derive(Debug)]
-struct WorkflowIf {
+struct WorkflowCond {
     cmp_rating: String,
     cmp: WorkflowCmp,
     cmp_value: u64,
-    true_workflow: String,
 }
 
-impl WorkflowIf {
+impl WorkflowCond {
     fn parse(condition: &str) -> Self {
-        let (rest, true_workflow) = condition.split_once(':').unwrap();
-        let ((rating, value), cmp) = if rest.contains('<') {
-            (rest.split_once('<').unwrap(), WorkflowCmp::Lt)
+        let ((rating, value), cmp) = if condition.contains('<') {
+            (condition.split_once('<').unwrap(), WorkflowCmp::Lt)
         } else {
-            (rest.split_once('>').unwrap(), WorkflowCmp::Gt)
+            (condition.split_once('>').unwrap(), WorkflowCmp::Gt)
         };
-
         Self {
             cmp_rating: rating.to_string(),
             cmp,
             cmp_value: value.parse().unwrap(),
-            true_workflow: true_workflow.to_string(),
         }
     }
 
-    fn execute(&self, rating: &&Ratings) -> bool {
+    fn execute(&self, rating: &Ratings) -> bool {
         match self.cmp_rating.as_str() {
             "x" => self.cmp.execute(rating.x, self.cmp_value),
             "m" => self.cmp.execute(rating.m, self.cmp_value),
@@ -118,6 +114,27 @@ impl WorkflowIf {
             "s" => self.cmp.execute(rating.s, self.cmp_value),
             _ => unreachable!(),
         }
+    }
+}
+
+#[derive(Debug)]
+struct WorkflowIf {
+    condition: WorkflowCond,
+    true_workflow: String,
+}
+
+impl WorkflowIf {
+    fn parse(if_condition: &str) -> Self {
+        let (rest, true_workflow) = if_condition.split_once(':').unwrap();
+
+        Self {
+            condition: WorkflowCond::parse(rest),
+            true_workflow: true_workflow.to_string(),
+        }
+    }
+
+    fn execute(&self, rating: &Ratings) -> bool {
+        self.condition.execute(rating)
     }
 }
 
@@ -136,7 +153,7 @@ fn is_accepted(workflows: &HashMap<String, Workflow>, rating: &Ratings) -> bool 
     }
 }
 
-fn p1(input: &str) -> String {
+fn parse_input(input: &str) -> (HashMap<String, Workflow>, Vec<Ratings>) {
     let (workflows, ratings) = input.trim().split_once("\n\n").unwrap();
 
     let workflows = workflows
@@ -152,9 +169,15 @@ fn p1(input: &str) -> String {
         .map(Ratings::parse)
         .collect::<Vec<_>>();
 
+    (workflows, ratings)
+}
+
+fn p1(input: &str) -> String {
+    let (workflows, ratings) = parse_input(input);
+
     ratings
         .iter()
-        .filter(|rating| is_accepted(&workflows, &rating))
+        .filter(|rating| is_accepted(&workflows, rating))
         .map(|rating| rating.x + rating.m + rating.a + rating.s)
         .sum::<u64>()
         .to_string()
