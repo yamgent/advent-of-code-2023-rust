@@ -3,61 +3,53 @@ use std::collections::HashSet;
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/21/input.txt");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct Vec2u {
-    x: usize,
-    y: usize,
+struct Vec2i {
+    x: i64,
+    y: i64,
 }
 
-impl Vec2u {
-    fn left(&self) -> Option<Self> {
-        if self.x == 0 {
-            None
-        } else {
-            Some(Vec2u {
-                x: self.x - 1,
-                y: self.y,
-            })
+impl Vec2i {
+    fn left(&self) -> Self {
+        Vec2i {
+            x: self.x - 1,
+            y: self.y,
         }
     }
 
-    fn right(&self) -> Option<Self> {
-        Some(Vec2u {
+    fn right(&self) -> Self {
+        Vec2i {
             x: self.x + 1,
             y: self.y,
-        })
-    }
-
-    fn up(&self) -> Option<Self> {
-        if self.y == 0 {
-            None
-        } else {
-            Some(Vec2u {
-                x: self.x,
-                y: self.y - 1,
-            })
         }
     }
 
-    fn down(&self) -> Option<Self> {
-        Some(Vec2u {
+    fn up(&self) -> Self {
+        Vec2i {
+            x: self.x,
+            y: self.y - 1,
+        }
+    }
+
+    fn down(&self) -> Self {
+        Vec2i {
             x: self.x,
             y: self.y + 1,
-        })
+        }
     }
 }
 
 #[derive(Debug)]
 struct Input {
-    size: Vec2u,
-    start: Vec2u,
-    rocks: HashSet<Vec2u>,
+    size: Vec2i,
+    start: Vec2i,
+    rocks: HashSet<Vec2i>,
 }
 
 impl Input {
     fn parse(input: &str) -> Self {
-        let size = Vec2u {
-            x: input.trim().lines().next().unwrap().len(),
-            y: input.trim().lines().count(),
+        let size = Vec2i {
+            x: input.trim().lines().next().unwrap().len() as i64,
+            y: input.trim().lines().count() as i64,
         };
         let start = input
             .trim()
@@ -68,7 +60,10 @@ impl Input {
                     .chars()
                     .enumerate()
                     .find(|(_, ch)| *ch == 'S')
-                    .map(|(x, _)| Vec2u { x, y })
+                    .map(|(x, _)| Vec2i {
+                        x: x as i64,
+                        y: y as i64,
+                    })
             })
             .unwrap();
         let rocks = input
@@ -80,7 +75,10 @@ impl Input {
                     .chars()
                     .enumerate()
                     .filter(|(_, ch)| *ch == '#')
-                    .map(|(x, _)| Vec2u { x, y })
+                    .map(|(x, _)| Vec2i {
+                        x: x as i64,
+                        y: y as i64,
+                    })
                     .collect::<Vec<_>>()
             })
             .collect::<HashSet<_>>();
@@ -93,17 +91,18 @@ fn execute_p1(input: &str, steps: usize) -> String {
     let input = Input::parse(input);
 
     (0..steps)
-        .fold(HashSet::<Vec2u>::from_iter([input.start]), |acc, _| {
+        .fold(HashSet::<Vec2i>::from_iter([input.start]), |acc, _| {
             HashSet::from_iter(
                 acc.iter()
                     .flat_map(|point| {
                         [point.left(), point.right(), point.up(), point.down()]
                             .iter()
-                            .flatten()
                             .copied()
                             .collect::<Vec<_>>()
                     })
-                    .filter(|pos| pos.x < input.size.x && pos.y < input.size.y)
+                    .filter(|pos| {
+                        pos.x >= 0 && pos.x < input.size.x && pos.y >= 0 && pos.y < input.size.y
+                    })
                     .filter(|pos| !input.rocks.contains(&pos)),
             )
         })
