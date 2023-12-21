@@ -87,7 +87,7 @@ impl Constraints {
         if self.constraints.iter().any(|v| *v == INVALID_CONSTRAINT) {
             0
         } else {
-            self.constraints.iter().map(|v| v.1 - v.0).product()
+            self.constraints.iter().map(|v| v.1 - v.0 + 1).product()
         }
     }
 
@@ -98,17 +98,23 @@ impl Constraints {
         if current_value == INVALID_CONSTRAINT
             || current_value.0 > cond.range.1
             || current_value.1 < cond.range.0
+            || current_value == cond.range
         {
-            result
+            result.constraints[cond.part] = INVALID_CONSTRAINT;
         } else if cond.range.0 > current_value.0 && cond.range.1 < current_value.1 {
             unimplemented!()
-        } else if cond.range.0 >= current_value.0 {
-            result.constraints[cond.part] = (current_value.0, cond.range.0);
-            result
+        } else if cond.range.0 > current_value.0 {
+            result.constraints[cond.part] = (current_value.0, cond.range.0 - 1);
+            if result.constraints[cond.part].1 < result.constraints[cond.part].0 {
+                result.constraints[cond.part] = INVALID_CONSTRAINT;
+            }
         } else {
-            result.constraints[cond.part] = (cond.range.1, current_value.1);
-            result
+            result.constraints[cond.part] = (cond.range.1 + 1, current_value.1);
+            if result.constraints[cond.part].1 < result.constraints[cond.part].0 {
+                result.constraints[cond.part] = INVALID_CONSTRAINT;
+            }
         }
+        result
     }
 }
 
