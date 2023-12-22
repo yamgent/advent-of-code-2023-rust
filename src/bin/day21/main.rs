@@ -95,15 +95,12 @@ fn execute_p1(input: &str, steps: usize) -> String {
             HashSet::from_iter(
                 acc.iter()
                     .flat_map(|point| {
-                        [point.left(), point.right(), point.up(), point.down()]
-                            .iter()
-                            .copied()
-                            .collect::<Vec<_>>()
+                        [point.left(), point.right(), point.up(), point.down()].to_vec()
                     })
                     .filter(|pos| {
                         pos.x >= 0 && pos.x < input.size.x && pos.y >= 0 && pos.y < input.size.y
                     })
-                    .filter(|pos| !input.rocks.contains(&pos)),
+                    .filter(|pos| !input.rocks.contains(pos)),
             )
         })
         .len()
