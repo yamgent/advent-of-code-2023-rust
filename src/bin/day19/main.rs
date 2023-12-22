@@ -215,7 +215,7 @@ impl Workflow {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Constraints {
     constraints: [Option<Interval>; 4],
 }
@@ -238,6 +238,133 @@ impl Constraints {
             .map(|x| x.sub(&cond.range))
             .flatten();
         result
+    }
+}
+
+#[cfg(test)]
+mod tests_constraints {
+    use super::*;
+
+    #[test]
+    fn test_constraints_combo() {
+        assert_eq!(
+            Constraints {
+                constraints: [
+                    Some(Interval::new(1, 4000)),
+                    Some(Interval::new(1, 4000)),
+                    Some(Interval::new(1, 4000)),
+                    Some(Interval::new(1, 4000)),
+                ],
+            }
+            .combos(),
+            4000 * 4000 * 4000 * 4000
+        );
+        assert_eq!(
+            Constraints {
+                constraints: [
+                    Some(Interval::new(1, 4000)),
+                    Some(Interval::new(1000, 4000)),
+                    Some(Interval::new(2000, 3500)),
+                    Some(Interval::new(1, 10)),
+                ],
+            }
+            .combos(),
+            4000 * (4000 - 1000 + 1) * (3500 - 2000 + 1) * (10 - 1 + 1)
+        );
+        assert_eq!(
+            Constraints {
+                constraints: [
+                    None,
+                    Some(Interval::new(1000, 4000)),
+                    Some(Interval::new(2000, 3500)),
+                    Some(Interval::new(1, 10)),
+                ],
+            }
+            .combos(),
+            0
+        );
+        assert_eq!(
+            Constraints {
+                constraints: [
+                    Some(Interval::new(1, 4000)),
+                    Some(Interval::new(1000, 4000)),
+                    Some(Interval::new(2000, 3500)),
+                    None,
+                ],
+            }
+            .combos(),
+            0
+        );
+    }
+
+    #[test]
+    fn test_constraints_apply_cond() {
+        assert_eq!(
+            Constraints {
+                constraints: [
+                    Some(Interval::new(1, 4000)),
+                    Some(Interval::new(1000, 4000)),
+                    Some(Interval::new(2000, 3500)),
+                    Some(Interval::new(1, 10)),
+                ],
+            }
+            .apply_constraint(&WorkflowCond {
+                part: P_X,
+                range: Interval::new(2000, 4000),
+            }),
+            Constraints {
+                constraints: [
+                    Some(Interval::new(1, 1999)),
+                    Some(Interval::new(1000, 4000)),
+                    Some(Interval::new(2000, 3500)),
+                    Some(Interval::new(1, 10)),
+                ],
+            }
+        );
+        assert_eq!(
+            Constraints {
+                constraints: [
+                    Some(Interval::new(1000, 3500)),
+                    Some(Interval::new(1000, 4000)),
+                    Some(Interval::new(2000, 3500)),
+                    Some(Interval::new(1, 10)),
+                ],
+            }
+            .apply_constraint(&WorkflowCond {
+                part: P_X,
+                range: Interval::new(1, 4000),
+            }),
+            Constraints {
+                constraints: [
+                    None,
+                    Some(Interval::new(1000, 4000)),
+                    Some(Interval::new(2000, 3500)),
+                    Some(Interval::new(1, 10)),
+                ],
+            }
+        );
+        assert_eq!(
+            Constraints {
+                constraints: [
+                    None,
+                    Some(Interval::new(1000, 4000)),
+                    Some(Interval::new(2000, 3500)),
+                    Some(Interval::new(1, 10)),
+                ],
+            }
+            .apply_constraint(&WorkflowCond {
+                part: P_X,
+                range: Interval::new(2000, 4000),
+            }),
+            Constraints {
+                constraints: [
+                    None,
+                    Some(Interval::new(1000, 4000)),
+                    Some(Interval::new(2000, 3500)),
+                    Some(Interval::new(1, 10)),
+                ],
+            }
+        );
     }
 }
 
