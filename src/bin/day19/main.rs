@@ -2,6 +2,146 @@ use std::collections::HashMap;
 
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/19/input.txt");
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Interval(u64, u64);
+
+impl Interval {
+    fn new(min: u64, max: u64) -> Self {
+        if max < min {
+            panic!("Forbidden state: {}-{} not a legal interval.", min, max);
+        }
+        Self(min, max)
+    }
+
+    fn inside(&self, val: u64) -> bool {
+        val >= self.0 && val <= self.1
+    }
+
+    fn sub(&self, other: &Interval) -> Option<Self> {
+        if other.1 < self.0 || other.0 > self.1 {
+            Some(*self)
+        } else if other.0 <= self.0 && other.1 >= self.1 {
+            None
+        } else if other.0 > self.0 && other.1 < self.1 {
+            unimplemented!("Should not happen in this scenario.");
+        } else {
+            let (min, max) = if other.1 == self.0 {
+                (self.0 + 1, self.1)
+            } else if other.0 == self.1 {
+                (self.0, self.1 - 1)
+            } else if other.0 > self.0 && other.0 < self.1 {
+                (self.0, other.0 - 1)
+            } else {
+                // other.1 >= self.0 && other.1 <= self.1
+                (other.1 + 1, self.1)
+            };
+
+            if min <= max {
+                Some(Interval::new(min, max))
+            } else {
+                None
+            }
+        }
+    }
+
+    fn count(&self) -> u64 {
+        self.1 - self.0 + 1
+    }
+}
+
+#[cfg(test)]
+mod tests_interval {
+    use super::*;
+
+    #[test]
+    fn test_interval_new() {
+        assert_eq!(Interval::new(1, 1), Interval(1, 1));
+        assert_eq!(Interval::new(1, 2), Interval(1, 2));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_interval_new_invalid() {
+        Interval::new(2, 1);
+    }
+
+    #[test]
+    fn test_interval_inside() {
+        assert_eq!(Interval::new(10, 20).inside(9), false);
+        assert_eq!(Interval::new(10, 20).inside(10), true);
+        assert_eq!(Interval::new(10, 20).inside(20), true);
+        assert_eq!(Interval::new(10, 20).inside(21), false);
+    }
+
+    #[test]
+    fn test_interval_sub() {
+        assert_eq!(
+            Interval::new(10, 20).sub(&Interval::new(0, 9)),
+            Some(Interval::new(10, 20))
+        );
+        assert_eq!(
+            Interval::new(10, 20).sub(&Interval::new(21, 30)),
+            Some(Interval::new(10, 20))
+        );
+
+        assert_eq!(
+            Interval::new(10, 20).sub(&Interval::new(0, 10)),
+            Some(Interval::new(11, 20))
+        );
+        assert_eq!(
+            Interval::new(10, 20).sub(&Interval::new(20, 30)),
+            Some(Interval::new(10, 19))
+        );
+
+        assert_eq!(
+            Interval::new(10, 20).sub(&Interval::new(0, 15)),
+            Some(Interval::new(16, 20))
+        );
+        assert_eq!(
+            Interval::new(10, 20).sub(&Interval::new(15, 30)),
+            Some(Interval::new(10, 14))
+        );
+
+        assert_eq!(Interval::new(10, 20).sub(&Interval::new(0, 20)), None);
+        assert_eq!(Interval::new(10, 20).sub(&Interval::new(10, 30)), None);
+
+        assert_eq!(Interval::new(10, 20).sub(&Interval::new(0, 30)), None);
+        assert_eq!(Interval::new(10, 20).sub(&Interval::new(10, 20)), None);
+
+        assert_eq!(
+            Interval::new(10, 20).sub(&Interval::new(10, 15)),
+            Some(Interval::new(16, 20))
+        );
+        assert_eq!(
+            Interval::new(10, 20).sub(&Interval::new(15, 20)),
+            Some(Interval::new(10, 14))
+        );
+
+        assert_eq!(
+            Interval::new(10, 20).sub(&Interval::new(9, 9)),
+            Some(Interval::new(10, 20))
+        );
+        assert_eq!(
+            Interval::new(10, 20).sub(&Interval::new(10, 10)),
+            Some(Interval::new(11, 20))
+        );
+        assert_eq!(
+            Interval::new(10, 20).sub(&Interval::new(20, 20)),
+            Some(Interval::new(10, 19))
+        );
+        assert_eq!(
+            Interval::new(10, 20).sub(&Interval::new(21, 21)),
+            Some(Interval::new(10, 20))
+        );
+    }
+
+    #[test]
+    fn test_interval_count() {
+        assert_eq!(Interval::new(1, 1).count(), 1);
+        assert_eq!(Interval::new(1, 10).count(), 10);
+    }
+}
+
 const P_X: usize = 0;
 const P_M: usize = 1;
 const P_A: usize = 2;
@@ -77,43 +217,26 @@ impl Workflow {
 
 #[derive(Debug, Clone, Copy)]
 struct Constraints {
-    constraints: [(u64, u64); 4],
+    constraints: [Option<Interval>; 4],
 }
-
-const INVALID_CONSTRAINT: (u64, u64) = (99999, 99999);
 
 impl Constraints {
     fn combos(&self) -> u64 {
-        if self.constraints.iter().any(|v| *v == INVALID_CONSTRAINT) {
+        if self.constraints.iter().any(|v| v.is_none()) {
             0
         } else {
-            self.constraints.iter().map(|v| v.1 - v.0 + 1).product()
+            self.constraints
+                .iter()
+                .map(|v| v.unwrap().count())
+                .product()
         }
     }
 
     fn apply_constraint(&self, cond: &WorkflowCond) -> Self {
         let mut result = *self;
-        let current_value = result.constraints[cond.part];
-
-        if current_value == INVALID_CONSTRAINT
-            || current_value.0 > cond.range.1
-            || current_value.1 < cond.range.0
-            || current_value == cond.range
-        {
-            result.constraints[cond.part] = INVALID_CONSTRAINT;
-        } else if cond.range.0 > current_value.0 && cond.range.1 < current_value.1 {
-            unimplemented!()
-        } else if cond.range.0 > current_value.0 {
-            result.constraints[cond.part] = (current_value.0, cond.range.0 - 1);
-            if result.constraints[cond.part].1 < result.constraints[cond.part].0 {
-                result.constraints[cond.part] = INVALID_CONSTRAINT;
-            }
-        } else {
-            result.constraints[cond.part] = (cond.range.1 + 1, current_value.1);
-            if result.constraints[cond.part].1 < result.constraints[cond.part].0 {
-                result.constraints[cond.part] = INVALID_CONSTRAINT;
-            }
-        }
+        result.constraints[cond.part] = result.constraints[cond.part]
+            .map(|x| x.sub(&cond.range))
+            .flatten();
         result
     }
 }
@@ -121,7 +244,7 @@ impl Constraints {
 #[derive(Debug, Clone, Copy)]
 struct WorkflowCond {
     part: usize,
-    range: (u64, u64),
+    range: Interval,
 }
 
 impl WorkflowCond {
@@ -135,9 +258,9 @@ impl WorkflowCond {
         let part = part_to_idx(part.chars().next().unwrap());
         let value = value.parse().unwrap();
         let range = if cmp == '<' {
-            (1, value)
+            Interval::new(1, value)
         } else {
-            (value, 4000)
+            Interval::new(value, 4000)
         };
 
         Self { part, range }
@@ -146,15 +269,15 @@ impl WorkflowCond {
     fn rev(&self) -> Self {
         let mut result = *self;
         if result.range.0 == 1 {
-            result.range = ((result.range.1 + 1).min(4000), 4000);
+            result.range = Interval::new((result.range.1 + 1).min(4000), 4000);
         } else {
-            result.range = (1, (result.range.0 - 1).max(0));
+            result.range = Interval::new(1, (result.range.0 - 1).max(1));
         }
         result
     }
 
     fn execute(&self, rating: &Ratings) -> bool {
-        rating.ratings[self.part] >= self.range.0 && rating.ratings[self.part] <= self.range.1
+        self.range.inside(rating.ratings[self.part])
     }
 }
 
@@ -276,7 +399,12 @@ fn p2(input: &str) -> String {
         &workflows,
         "in",
         &mut vec![Constraints {
-            constraints: [(1, 4000), (1, 4000), (1, 4000), (1, 4000)],
+            constraints: [
+                Some(Interval::new(1, 4000)),
+                Some(Interval::new(1, 4000)),
+                Some(Interval::new(1, 4000)),
+                Some(Interval::new(1, 4000)),
+            ],
         }],
     )
     .to_string()
