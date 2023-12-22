@@ -396,9 +396,11 @@ impl WorkflowCond {
     fn rev(&self) -> Self {
         let mut result = *self;
         if result.range.0 == 1 {
-            result.range = Interval::new((result.range.1 + 1).min(4000), 4000);
+            result.range = Interval::new(result.range.1 + 1, 4000);
+        } else if result.range.1 == 4000 {
+            result.range = Interval::new(1, result.range.0 - 1);
         } else {
-            result.range = Interval::new(1, (result.range.0 - 1).max(1));
+            unreachable!();
         }
         result
     }
@@ -487,36 +489,49 @@ fn p2(input: &str) -> String {
         } else if current == "A" {
             constraints.last().unwrap().combos()
         } else {
+            let initial_constraints_len = constraints.len();
             let workflow = workflows.get(current).unwrap();
             let mut result = 0;
 
-            workflow.ifs.iter().for_each(|if_workflow| {
-                constraints.push(
-                    constraints
-                        .iter()
-                        .last()
-                        .unwrap()
-                        .apply_constraint(&if_workflow.condition),
-                );
+            workflow
+                .ifs
+                .iter()
+                .enumerate()
+                .for_each(|(index, if_workflow)| {
+                    assert_eq!(constraints.len(), initial_constraints_len + index);
 
-                result += traverse(workflows, if_workflow.true_workflow.as_str(), constraints);
+                    constraints.push(
+                        constraints
+                            .iter()
+                            .last()
+                            .unwrap()
+                            .apply_constraint(&if_workflow.condition),
+                    );
 
-                constraints.pop();
+                    result += traverse(workflows, if_workflow.true_workflow.as_str(), constraints);
 
-                constraints.push(
-                    constraints
-                        .iter()
-                        .last()
-                        .unwrap()
-                        .apply_constraint(&if_workflow.condition.rev()),
-                );
-            });
+                    assert_eq!(constraints.len(), initial_constraints_len + index + 1);
+
+                    constraints.pop();
+
+                    constraints.push(
+                        constraints
+                            .iter()
+                            .last()
+                            .unwrap()
+                            .apply_constraint(&if_workflow.condition.rev()),
+                    );
+                });
 
             (0..workflow.ifs.len()).for_each(|_| {
                 constraints.pop();
             });
 
+            assert_eq!(constraints.len(), initial_constraints_len);
+
             result += traverse(workflows, workflow.else_workflow.as_str(), constraints);
+
+            assert_eq!(constraints.len(), initial_constraints_len);
 
             result
         }
