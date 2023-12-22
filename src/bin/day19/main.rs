@@ -234,9 +234,15 @@ impl Constraints {
 
     fn apply_constraint(&self, cond: &WorkflowCond) -> Self {
         let mut result = *self;
-        result.constraints[cond.part] = result.constraints[cond.part]
-            .map(|x| x.sub(&cond.range))
-            .flatten();
+
+        result.constraints[cond.part] = if cond.range.0 == 1 && cond.range.1 == 4000 {
+            result.constraints[cond.part]
+        } else {
+            result.constraints[cond.part]
+                .map(|x| x.sub(&cond.rev().range))
+                .flatten()
+        };
+
         result
     }
 }
@@ -314,7 +320,7 @@ mod tests_constraints {
             }),
             Constraints {
                 constraints: [
-                    Some(Interval::new(1, 1999)),
+                    Some(Interval::new(2000, 4000)),
                     Some(Interval::new(1000, 4000)),
                     Some(Interval::new(2000, 3500)),
                     Some(Interval::new(1, 10)),
@@ -333,6 +339,28 @@ mod tests_constraints {
             .apply_constraint(&WorkflowCond {
                 part: P_X,
                 range: Interval::new(1, 4000),
+            }),
+            Constraints {
+                constraints: [
+                    Some(Interval::new(1000, 3500)),
+                    Some(Interval::new(1000, 4000)),
+                    Some(Interval::new(2000, 3500)),
+                    Some(Interval::new(1, 10)),
+                ],
+            }
+        );
+        assert_eq!(
+            Constraints {
+                constraints: [
+                    Some(Interval::new(1000, 3500)),
+                    Some(Interval::new(1000, 4000)),
+                    Some(Interval::new(2000, 3500)),
+                    Some(Interval::new(1, 10)),
+                ],
+            }
+            .apply_constraint(&WorkflowCond {
+                part: P_X,
+                range: Interval::new(1, 800),
             }),
             Constraints {
                 constraints: [
