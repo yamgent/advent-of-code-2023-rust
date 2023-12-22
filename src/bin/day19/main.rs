@@ -238,8 +238,7 @@ impl Constraints {
         result.constraints[cond.part] = if cond.range.0 == 1 && cond.range.1 == 4000 {
             result.constraints[cond.part]
         } else {
-            result.constraints[cond.part]
-                .and_then(|x| x.sub(&cond.rev().range))
+            result.constraints[cond.part].and_then(|x| x.sub(&cond.rev().range))
         };
 
         result
@@ -550,11 +549,17 @@ fn p2(input: &str) -> String {
                     );
                 });
 
-            assert_eq!(constraints.len(), initial_constraints_len + workflow.ifs.len());
+            assert_eq!(
+                constraints.len(),
+                initial_constraints_len + workflow.ifs.len()
+            );
 
             result += traverse(workflows, workflow.else_workflow.as_str(), constraints);
 
-            assert_eq!(constraints.len(), initial_constraints_len + workflow.ifs.len());
+            assert_eq!(
+                constraints.len(),
+                initial_constraints_len + workflow.ifs.len()
+            );
 
             (0..workflow.ifs.len()).for_each(|_| {
                 constraints.pop();
