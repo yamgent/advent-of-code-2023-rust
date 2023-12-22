@@ -411,11 +411,11 @@ impl WorkflowCond {
         };
 
         let part = part_to_idx(part.chars().next().unwrap());
-        let value = value.parse().unwrap();
+        let value = value.parse::<u64>().unwrap();
         let range = if cmp == '<' {
-            Interval::new(1, value)
+            Interval::new(1, value - 1)
         } else {
-            Interval::new(value, 4000)
+            Interval::new(value + 1, 4000)
         };
 
         Self { part, range }
@@ -551,13 +551,15 @@ fn p2(input: &str) -> String {
                     );
                 });
 
+            assert_eq!(constraints.len(), initial_constraints_len + workflow.ifs.len());
+
+            result += traverse(workflows, workflow.else_workflow.as_str(), constraints);
+
+            assert_eq!(constraints.len(), initial_constraints_len + workflow.ifs.len());
+
             (0..workflow.ifs.len()).for_each(|_| {
                 constraints.pop();
             });
-
-            assert_eq!(constraints.len(), initial_constraints_len);
-
-            result += traverse(workflows, workflow.else_workflow.as_str(), constraints);
 
             assert_eq!(constraints.len(), initial_constraints_len);
 
@@ -625,8 +627,7 @@ hdj{m>838:A,pv}
     }
 
     #[test]
-    #[ignore = "not yet implemented"]
     fn test_p2_actual() {
-        assert_eq!(p2(ACTUAL_INPUT), "");
+        assert_eq!(p2(ACTUAL_INPUT), "130251901420382");
     }
 }
