@@ -209,7 +209,7 @@ impl Workflow {
     fn execute(&self, rating: &Ratings) -> String {
         self.ifs
             .iter()
-            .find(|workflow_if| workflow_if.execute(&rating))
+            .find(|workflow_if| workflow_if.execute(rating))
             .map(|workflow_if| workflow_if.true_workflow.to_string())
             .unwrap_or(self.else_workflow.to_string())
     }
@@ -239,8 +239,7 @@ impl Constraints {
             result.constraints[cond.part]
         } else {
             result.constraints[cond.part]
-                .map(|x| x.sub(&cond.rev().range))
-                .flatten()
+                .and_then(|x| x.sub(&cond.rev().range))
         };
 
         result
