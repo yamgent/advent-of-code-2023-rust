@@ -1,12 +1,5 @@
 const ACTUAL_INPUT: &str = include_str!("../../../actual_inputs/2023/24/input.txt");
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct Vec3i {
-    x: i64,
-    y: i64,
-    z: i64,
-}
-
 #[derive(Debug, Clone, Copy)]
 struct Vec3f {
     x: f64,
@@ -26,20 +19,20 @@ impl Vec3f {
     fn dot(&self, other: &Vec3f) -> f64 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
-}
 
-fn vec3i_to_2f(vec: &Vec3i) -> Vec3f {
-    Vec3f {
-        x: vec.x as f64,
-        y: vec.y as f64,
-        z: 0.0,
+    fn drop_z(&self) -> Vec3f {
+        Vec3f {
+            x: self.x,
+            y: self.y,
+            z: 0.0,
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 struct Hailstone {
-    pos: Vec3i,
-    vel: Vec3i,
+    pos: Vec3f,
+    vel: Vec3f,
 }
 
 impl Hailstone {
@@ -66,11 +59,11 @@ impl Hailstone {
                 false
             } else {
                 let intersect_pos = Vec3f { x, y, z: 0.0 };
-                let inter1 = intersect_pos.sub(&vec3i_to_2f(&self.pos));
-                let inter2 = intersect_pos.sub(&vec3i_to_2f(&other.pos));
+                let inter1 = intersect_pos.sub(&self.pos.drop_z());
+                let inter2 = intersect_pos.sub(&other.pos.drop_z());
 
-                let dot1 = vec3i_to_2f(&self.vel).dot(&inter1);
-                let dot2 = vec3i_to_2f(&other.vel).dot(&inter2);
+                let dot1 = self.vel.drop_z().dot(&inter1);
+                let dot2 = other.vel.drop_z().dot(&inter2);
 
                 dot1 > 0.0 && dot2 > 0.0
             }
@@ -79,12 +72,12 @@ impl Hailstone {
 }
 
 fn parse(input: &str) -> Vec<Hailstone> {
-    fn parse_vec(input: &str) -> Vec3i {
+    fn parse_vec(input: &str) -> Vec3f {
         let mut iter = input
             .trim()
             .split(',')
-            .map(|x| x.trim().parse::<i64>().unwrap());
-        Vec3i {
+            .map(|x| x.trim().parse::<f64>().unwrap());
+        Vec3f {
             x: iter.next().unwrap(),
             y: iter.next().unwrap(),
             z: iter.next().unwrap(),
@@ -104,8 +97,7 @@ fn parse(input: &str) -> Vec<Hailstone> {
         .collect()
 }
 
-fn solve_p1(input: &str, test_area: (i64, i64)) -> String {
-    let test_area = (test_area.0 as f64, test_area.1 as f64);
+fn solve_p1(input: &str, test_area: (f64, f64)) -> String {
     let input = parse(input);
 
     (0..input.len())
@@ -124,7 +116,7 @@ fn solve_p1(input: &str, test_area: (i64, i64)) -> String {
 }
 
 fn p1(input: &str) -> String {
-    solve_p1(input, (200000000000000, 400000000000000))
+    solve_p1(input, (200000000000000.0, 400000000000000.0))
 }
 
 fn p2(input: &str) -> String {
@@ -151,7 +143,7 @@ mod tests {
 
     #[test]
     fn test_p1_sample() {
-        assert_eq!(solve_p1(SAMPLE_INPUT, (7, 27)), "2");
+        assert_eq!(solve_p1(SAMPLE_INPUT, (7.0, 27.0)), "2");
     }
 
     #[test]
