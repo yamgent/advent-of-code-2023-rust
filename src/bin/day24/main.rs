@@ -38,8 +38,8 @@ struct Hailstone {
 impl Hailstone {
     fn intersects_p1(&self, other: &Hailstone, test_area: &(f64, f64)) -> bool {
         fn mxc(hailstone: &Hailstone) -> (f64, f64) {
-            let m = hailstone.vel.y as f64 / hailstone.vel.x as f64;
-            let c = hailstone.pos.y as f64 - m * hailstone.pos.x as f64;
+            let m = hailstone.vel.y / hailstone.vel.x;
+            let c = hailstone.pos.y - m * hailstone.pos.x;
             (m, c)
         }
         let mxc1 = mxc(self);
